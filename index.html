@@ -103,14 +103,56 @@ body.mom{font-size:18px}
 .copy{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .copy code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;word-break:break-all}
 .extlink{color:var(--accent);font-weight:500}
+.who{display:inline-flex;align-items:center;gap:8px;border-radius:999px;padding:4px 14px 4px 6px;font-weight:600}
+.av{font-size:1.4rem;line-height:1}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--line);border-radius:12px;padding:4px}
+.tabs button{border:0;border-radius:9px;background:transparent;font-weight:600;min-height:44px}
+.tabs button[aria-pressed="true"]{background:var(--surface);color:var(--accent);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.hello{font:650 1.4rem/1.2 var(--f-br);margin:0}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.stats div{display:flex;flex-direction:column;align-items:center;gap:2px;background:var(--bg);border-radius:10px;padding:10px 4px;text-align:center}
+.stats b{font:650 1.6rem/1 var(--f-br);font-variant-numeric:tabular-nums}
+.stats span{font-size:.75rem;color:var(--muted)}
+.stats .star b{color:var(--mid)}
+.choices{display:grid;grid-template-columns:1fr;gap:8px}
+.choice{text-align:left;min-height:56px;font-size:1.05rem;padding:10px 16px}
+.choice.br{font:500 1.15rem/1.3 var(--f-br)}
+.choice.good{background:var(--ok-bg);border-color:var(--ok);color:var(--ok);font-weight:600}
+.choice.bad{background:var(--bad-bg);border-color:var(--bad);color:var(--bad)}
+.feedback{border-radius:12px;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+.feedback.good{background:var(--ok-bg)}
+.feedback.bad{background:var(--bad-bg)}
+.feedback strong{font-size:1.15rem}
+.feedback .fbbr{font:500 1.2rem/1.3 var(--f-br)}
+.ask{font:500 1.3rem/1.35 var(--f-ui);margin:0}
+.profiles{display:flex;flex-direction:column;gap:8px}
+.profiles button{display:flex;align-items:center;gap:10px;justify-content:flex-start;min-height:52px;font-weight:600}
+.profiles button[aria-current="true"]{border-color:var(--accent);background:var(--bg)}
+.avpick{display:flex;flex-wrap:wrap;gap:6px}
+.avpick button{font-size:1.5rem;min-height:48px;min-width:48px;padding:4px}
+.avpick button[aria-pressed="true"]{border-color:var(--accent);border-width:2px;background:var(--bg)}
+.chip{min-height:34px;padding:4px 12px;border-radius:999px;font-size:.85rem}
+.chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Pokou<small id="subtitle">Coach de prononciation bretonne</small></h1>
+    <h1>Pokou<small id="subtitle">Apprendre le breton avec les voix de la famille</small></h1>
+    <button class="who" id="who" hidden aria-label="Changer de profil"><span class="av" id="whoAv"></span><span id="whoName"></span></button>
   </header>
+
+  <section id="profiles" class="card" hidden>
+    <span class="label">Qui apprend ?</span>
+    <div class="profiles" id="profList"></div>
+    <form id="profForm" class="stack">
+      <span class="label">Ajouter quelqu'un</span>
+      <div class="field"><label for="profName">Prénom</label><input id="profName" autocomplete="off" required maxlength="20"></div>
+      <div class="avpick" id="avPick" role="group" aria-label="Choisir un animal"></div>
+      <button class="primary" type="submit">Ajouter ce profil</button>
+    </form>
+  </section>
 
   <section id="mom" class="stack" hidden>
     <p class="momintro">Demat ! Lisez chaque phrase à voix haute, naturellement, comme vous la diriez. Perig s'en servira comme modèle.</p>
@@ -132,6 +174,14 @@ body.mom{font-size:18px}
       </div>
     </div>
     <p class="note" id="momTally"></p>
+    <details id="momAddBox">
+      <summary>Ajouter un mot ou une phrase à vous</summary>
+      <form id="momAdd"><div>
+        <div class="field"><label for="momNewBr">En breton, comme vous l'écrivez</label><input id="momNewBr" required lang="br" autocomplete="off"></div>
+        <div class="field"><label for="momNewFr">Ce que ça veut dire en français</label><input id="momNewFr" autocomplete="off"></div>
+        <button class="primary" type="submit">Ajouter, puis l'enregistrer</button>
+      </div></form>
+    </details>
     <button id="momSend" class="primary big">Envoyer mes enregistrements à Perig</button>
     <button id="momShareNow" class="primary big" hidden>Toucher ici pour choisir comment envoyer</button>
     <p class="note" id="momSendInfo">Le téléphone vous proposera de choisir comment envoyer : courriel, WhatsApp, SMS…</p>
@@ -144,6 +194,30 @@ body.mom{font-size:18px}
     <div class="bar"><i id="statusBar"></i></div>
   </div>
 
+  <div class="tabs" role="group" aria-label="Mode">
+    <button id="tabLearn" aria-pressed="true">Apprendre</button>
+    <button id="tabSay" aria-pressed="false">Prononcer</button>
+  </div>
+
+  <section id="learn" class="stack">
+    <div id="lHome" class="card">
+      <p class="hello" id="lHello"></p>
+      <div class="stats">
+        <div><b id="stDue">0</b><span>à revoir</span></div>
+        <div><b id="stNew">0</b><span>nouvelles</span></div>
+        <div><b id="stKnown">0</b><span>bien sues</span></div>
+        <div class="star"><b id="stStars">0</b><span>étoiles</span></div>
+      </div>
+      <button id="lStart" class="primary big">Commencer</button>
+      <p class="note" id="lNote"></p>
+    </div>
+    <div id="lCard" class="card" hidden aria-live="polite">
+      <div class="stack" style="gap:6px"><span class="label" id="lStep"></span><div class="bar"><i id="lBar"></i></div></div>
+      <div id="lBody" class="stack"></div>
+    </div>
+  </section>
+
+  <div id="practice" class="stack" hidden>
   <div class="nav">
     <button id="prev" aria-label="Phrase précédente">‹</button>
     <label class="sr" for="pick">Choisir une phrase</label>
@@ -166,6 +240,7 @@ body.mom{font-size:18px}
         </div>
         <span class="note" id="refInfo"></span>
       </div>
+      <div class="row" id="voices" role="group" aria-label="Choisir la voix"></div>
       <div class="row" id="noRef" hidden>
         <button id="addRef" class="primary">Ajouter une voix modèle</button>
         <a class="extlink" id="sintezenn" href="https://niverel.brezhoneg.bzh/fr/sintezenn/" target="_blank" rel="noopener">Entendre avec Sintezenn ↗</a>
@@ -207,19 +282,22 @@ body.mom{font-size:18px}
   </section>
 
   <details id="refBox">
-    <summary>Enregistrer la voix de référence (maman)</summary>
+    <summary>Voix modèles : enregistrer, importer, inviter</summary>
     <div>
-      <p class="note">Fais dire la phrase affichée à la personne qui sert de modèle. L'enregistrement reste sur cet appareil. Le coach indique aussi s'il comprend bien cette voix, pour savoir quelle note viser.</p>
+      <span class="label">Ici, sur cet appareil</span>
+      <p class="note">Fais dire la phrase affichée à une personne bretonnante. Le coach indique aussi s'il comprend bien cette voix, pour savoir quelle note viser.</p>
+      <div class="field"><label for="refVoice">Voix de</label><input id="refVoice" value="Maman" autocomplete="off" maxlength="24"></div>
       <div class="row">
         <button id="recRef">Enregistrer la référence</button>
         <label class="note">ou importer un fichier : <input type="file" id="refFile" accept="audio/*"></label>
       </div>
-      <button id="delRef" hidden>Supprimer cette référence</button>
+      <button id="delRef" hidden>Supprimer la voix affichée pour cette phrase</button>
       <p class="note" id="refScore"></p>
-      <span class="label">Depuis chez elle</span>
-      <p class="note">Envoie-lui ce lien. Elle enregistre toutes les phrases sur son téléphone, puis touche « Envoyer mes enregistrements ». Elle n'a rien à télécharger.</p>
+      <span class="label">À distance</span>
+      <p class="note">Écris le nom de la personne et envoie-lui le lien. Elle enregistre les phrases sur son téléphone, peut ajouter ses propres mots, puis touche « Envoyer mes enregistrements ». Elle n'a rien à télécharger.</p>
+      <div class="field"><label for="inviteName">Nom de la personne</label><input id="inviteName" value="Maman" autocomplete="off" maxlength="24"></div>
       <div class="copy"><code id="momLink"></code><button id="copyLink">Copier</button></div>
-      <label class="note">Importer les fichiers reçus de maman :
+      <label class="note">Importer les fichiers reçus :
         <input type="file" id="refImport" accept="audio/*,.wav" multiple></label>
       <p class="note" id="importInfo"></p>
     </div>
@@ -234,6 +312,7 @@ body.mom{font-size:18px}
       <div class="row"><button class="primary" type="submit">Ajouter</button><button type="button" id="delPhrase">Retirer la phrase affichée</button></div>
     </div></form>
   </details>
+  </div>
 
   <footer>
     <span>La note mesure si la machine reconnaît les mots attendus. Elle ne juge pas l'accent : un mot « bien reconnu » peut encore sonner étranger, et un parler local juste peut être mal compris. Ta mère reste la meilleure juge.</span>
@@ -275,9 +354,52 @@ function dbOp(mode, fn){
     }catch{ res(null); }
   });
 }
-const getRef = id => dbOp("readonly", s => s.get(id));
-const putRef = (id, v) => dbOp("readwrite", s => s.put(v, id));
-const delRefDb = id => dbOp("readwrite", s => s.delete(id));
+/* Voix modèles : plusieurs voix par phrase. Clé « id » pour Maman (format historique), « id|Nom » sinon. */
+const DEFAULT_VOICE = "Maman";
+let REFS = new Map();
+const refKey = (id, voice) => voice === DEFAULT_VOICE ? id : id + "|" + voice;
+function loadRefs(){
+  return new Promise(res => {
+    if(!idb) return res();
+    const next = new Map();
+    try{
+      const req = idb.transaction("refs", "readonly").objectStore("refs").openCursor();
+      req.onsuccess = () => {
+        const c = req.result;
+        if(!c){ REFS = next; return res(); }
+        const k = String(c.key), i = k.indexOf("|");
+        const id = i < 0 ? k : k.slice(0, i);
+        const voice = (c.value && c.value.voice) || (i < 0 ? DEFAULT_VOICE : k.slice(i + 1));
+        if(!next.has(id)) next.set(id, new Map());
+        next.get(id).set(voice, c.value);
+        c.continue();
+      };
+      req.onerror = () => res();
+    }catch{ res(); }
+  });
+}
+const voicesOf = id => REFS.get(id) || new Map();
+async function putVoice(id, voice, val){
+  voice = (voice || DEFAULT_VOICE).trim() || DEFAULT_VOICE;
+  if(!REFS.has(id)) REFS.set(id, new Map());
+  REFS.get(id).set(voice, {...val, voice});
+  await dbOp("readwrite", s => s.put({...val, voice}, refKey(id, voice)));
+  await loadRefs();
+}
+async function delVoice(id, voice){
+  if(REFS.has(id)) REFS.get(id).delete(voice);
+  await dbOp("readwrite", s => s.delete(refKey(id, voice)));
+  await loadRefs();
+}
+function pickVoice(id){
+  const m = voicesOf(id); if(!m.size) return null;
+  const pref = ls.get("pokou.voice", null);
+  return m.has(pref) ? pref : m.keys().next().value;
+}
+function voiceUrl(id){
+  const v = pickVoice(id); if(!v) return null;
+  const r = voicesOf(id).get(v); return r && r.blob ? URL.createObjectURL(r.blob) : null;
+}
 
 /* ---------- texte ---------- */
 function normalize(t){
@@ -442,6 +564,55 @@ function allPhrases(){
   const extra = ls.get("distagan.phrases", []), removed = new Set(ls.get("distagan.removed", []));
   return base.concat(extra).filter(p => !removed.has(p.id));
 }
+
+/* ---------- profils ---------- */
+const AVATARS = ["🦊", "🐬", "🦉", "🐢", "🐺", "🦭", "🐝", "🦀"];
+let profiles = ls.get("pokou.profiles", null) || [{id: "p1", name: "Perig", av: "🦊"}];
+let who = ls.get("pokou.who", profiles[0].id);
+if(!profiles.some(p => p.id === who)) who = profiles[0].id;
+const me = () => profiles.find(p => p.id === who);
+const histKey = id => who === "p1" ? "distagan.hist." + id : "pokou.hist." + who + "." + id;
+let newAv = AVATARS[1];
+function renderWho(){
+  $("who").hidden = false; $("whoAv").textContent = me().av; $("whoName").textContent = me().name;
+  const list = $("profList"); list.textContent = "";
+  for(const p of profiles){
+    const b = document.createElement("button");
+    b.setAttribute("aria-current", p.id === who);
+    const a = document.createElement("span"); a.className = "av"; a.textContent = p.av;
+    b.append(a, p.name);
+    b.onclick = () => { who = p.id; ls.set("pokou.who", who); $("profiles").hidden = true; endLearning(); renderWho(); render(); };
+    list.append(b);
+  }
+  const pick = $("avPick"); pick.textContent = "";
+  for(const a of AVATARS){
+    const b = document.createElement("button"); b.type = "button"; b.textContent = a; b.setAttribute("aria-pressed", a === newAv);
+    b.onclick = () => { newAv = a; renderWho(); };
+    pick.append(b);
+  }
+}
+$("who").onclick = () => { $("profiles").hidden = !$("profiles").hidden; };
+$("profForm").onsubmit = e => {
+  e.preventDefault();
+  const name = $("profName").value.trim(); if(!name) return;
+  const id = "p" + Date.now().toString(36);
+  profiles.push({id, name, av: newAv}); ls.set("pokou.profiles", profiles);
+  who = id; ls.set("pokou.who", who); $("profName").value = ""; $("profiles").hidden = true;
+  endLearning(); renderWho(); render();
+};
+
+/* ---------- onglet Prononcer ---------- */
+function renderVoices(p){
+  const box = $("voices"); box.textContent = "";
+  const m = voicesOf(p.id);
+  if(m.size < 2) return;
+  const sel = pickVoice(p.id);
+  for(const v of m.keys()){
+    const b = document.createElement("button"); b.className = "chip"; b.textContent = v; b.setAttribute("aria-pressed", v === sel);
+    b.onclick = () => { ls.set("pokou.voice", v); render(); };
+    box.append(b);
+  }
+}
 async function render(){
   const p = cur(); if(!p) return;
   $("br").textContent = p.br; $("fr").textContent = p.fr || "";
@@ -452,14 +623,16 @@ async function render(){
   }
   sel.value = idx;
   ls.set("distagan.idx", p.id);
-  const r = await getRef(p.id);
-  if(refUrl){ URL.revokeObjectURL(refUrl); refUrl = null; }
-  if(r && r.blob){ refUrl = URL.createObjectURL(r.blob); $("refInfo").textContent = "Voix enregistrée sur cet appareil"; }
+  if(refUrl && refUrl.startsWith("blob:")) URL.revokeObjectURL(refUrl);
+  refUrl = voiceUrl(p.id);
+  const v = pickVoice(p.id), r = v ? voicesOf(p.id).get(v) : null;
+  if(refUrl){ $("refInfo").textContent = "Voix : " + v; }
   else if(p.ref){ refUrl = p.ref; $("refInfo").textContent = "Voix de référence fournie"; }
-  else { $("refInfo").textContent = "Pas encore de voix modèle pour cette phrase. Fais-la enregistrer par ta mère, ou écoute la voix de synthèse Sintezenn : la phrase sera copiée, il suffira de la coller."; }
+  else { $("refInfo").textContent = "Pas encore de voix modèle pour cette phrase. Fais-la enregistrer par un proche bretonnant, ou écoute la voix de synthèse Sintezenn : la phrase sera copiée, il suffira de la coller."; }
+  renderVoices(p);
   $("playRef").hidden = !refUrl; document.querySelector(".speed").hidden = !refUrl; $("noRef").hidden = !!refUrl;
-  $("delRef").hidden = !(r && r.blob);
-  $("refScore").textContent = r && r.score != null ? "Le coach comprend cette voix de référence à " + r.score + " / 100. Vise à peu près ce niveau." : "";
+  $("delRef").hidden = !r;
+  $("refScore").textContent = r && r.score != null ? "Le coach comprend la voix de " + v + " à " + r.score + " / 100 sur cette phrase. Vise à peu près ce niveau." : "";
   const unknown = VOCAB ? normalize(p.br).filter(w => !VOCAB.has(w)) : [];
   $("micHint").textContent = unknown.length
     ? "Le coach ne connaît pas « " + unknown.join(", ") + " » : ce mot ne compte pas dans la note."
@@ -468,7 +641,7 @@ async function render(){
   renderHist();
 }
 function renderHist(){
-  const h = ls.get("distagan.hist." + cur().id, []), box = $("hist"); box.textContent = "";
+  const h = ls.get(histKey(cur().id), []), box = $("hist"); box.textContent = "";
   for(const s of h.slice(-20)){ const i = document.createElement("i"); i.style.height = Math.max(3, s * 0.36) + "px"; i.title = s + " / 100"; box.append(i); }
 }
 function verdict(s){
@@ -478,11 +651,8 @@ function verdict(s){
   if(s >= 30) return "Encore difficile à suivre. Réécoute et ralentis.";
   return "Le coach n'a presque rien reconnu.";
 }
-function showResult(res){
-  $("result").hidden = false;
-  $("score").textContent = res.score == null ? "–" : res.score;
-  $("verdict").textContent = verdict(res.score);
-  const box = $("words"); box.textContent = "";
+function wordChips(res){
+  const box = document.createElement("div"); box.className = "words";
   for(const w of res.words){
     const s = document.createElement("span");
     const st = w.known ? w.status : "inconnu";
@@ -493,6 +663,13 @@ function showResult(res){
     if(sm.textContent) s.append(sm);
     box.append(s);
   }
+  return box;
+}
+function showResult(res){
+  $("result").hidden = false;
+  $("score").textContent = res.score == null ? "–" : res.score;
+  $("verdict").textContent = verdict(res.score);
+  $("words").replaceWith(Object.assign(wordChips(res), {id: "words"}));
   $("heard").textContent = "";
   const b = document.createElement("b"); b.textContent = res.heard || "(rien)";
   $("heard").append("Le coach a entendu : ", b);
@@ -507,20 +684,22 @@ async function analyse(blob){
     const samples = await decode(blob);
     const res = scoreIt(cur().br, await transcribe(samples));
     showResult(res);
-    if(res.score != null){ const k = "distagan.hist." + cur().id, h = ls.get(k, []); h.push(res.score); ls.set(k, h.slice(-50)); renderHist(); }
+    if(res.score != null){ const k = histKey(cur().id), h = ls.get(k, []); h.push(res.score); ls.set(k, h.slice(-50)); renderHist(); }
     $("micHint").textContent = "Touche le micro pour réessayer.";
   }catch(e){ showErr("Analyse impossible : " + e.message); $("micHint").textContent = ""; }
 }
+async function scoreVoice(p, blob){
+  if(!model) return null;
+  try{ return scoreIt(p.br, await transcribe(await decode(blob))).score; }catch{ return null; }
+}
 async function analyseRef(blob){
-  const id = cur().id;
-  try{
-    const res = scoreIt(cur().br, await transcribe(await decode(blob)));
-    await putRef(id, {blob, score: res.score, date: Date.now()});
-  }catch(e){ await putRef(id, {blob, score: null, date: Date.now()}); }
+  const p = cur(), voice = $("refVoice").value.trim() || DEFAULT_VOICE;
+  await putVoice(p.id, voice, {blob, score: await scoreVoice(p, blob), date: Date.now()});
+  ls.set("pokou.voice", voice);
   render();
 }
 
-/* ---------- événements ---------- */
+/* ---------- événements Prononcer ---------- */
 $("prev").onclick = () => { idx = (idx - 1 + phrases.length) % phrases.length; render(); };
 $("next").onclick = () => { idx = (idx + 1) % phrases.length; render(); };
 $("pick").onchange = e => { idx = +e.target.value; render(); };
@@ -545,11 +724,11 @@ $("mic").onclick = async () => {
 $("fileIn").onchange = e => { const f = e.target.files[0]; if(f){ if(myUrl) URL.revokeObjectURL(myUrl); myUrl = URL.createObjectURL(f); analyse(f); } e.target.value = ""; };
 $("recRef").onclick = async () => {
   if(rec){ stopRecording(); return; }
-  const ok = await startRecording(blob => { $("recRef").textContent = "Enregistrer la référence"; $("refScore").textContent = "Analyse de la voix de référence…"; analyseRef(blob); });
+  const ok = await startRecording(blob => { $("recRef").textContent = "Enregistrer la référence"; $("refScore").textContent = "Analyse de la voix…"; analyseRef(blob); });
   if(ok) $("recRef").textContent = "Arrêter l'enregistrement";
 };
 $("refFile").onchange = e => { const f = e.target.files[0]; if(f){ $("refScore").textContent = "Analyse…"; analyseRef(f); } e.target.value = ""; };
-$("delRef").onclick = async () => { await delRefDb(cur().id); render(); };
+$("delRef").onclick = async () => { const v = pickVoice(cur().id); if(v){ await delVoice(cur().id, v); render(); } };
 $("newBr").oninput = () => {
   const u = VOCAB ? normalize($("newBr").value).filter(w => !VOCAB.has(w)) : [];
   $("newCheck").textContent = u.length ? "Mots inconnus du coach (vérifie l'orthographe) : " + u.join(", ") : "";
@@ -562,58 +741,256 @@ $("addForm").onsubmit = e => {
   extra.push({id, br, fr: $("newFr").value.trim()}); ls.set("distagan.phrases", extra);
   phrases = allPhrases(); idx = phrases.findIndex(p => p.id === id);
   $("newBr").value = ""; $("newFr").value = ""; $("newCheck").textContent = "";
-  $("pick").textContent = ""; render();
+  $("pick").textContent = ""; render(); renderLearnHome();
 };
 $("delPhrase").onclick = () => {
   if(phrases.length < 2) return;
   const id = cur().id, removed = ls.get("distagan.removed", []); removed.push(id); ls.set("distagan.removed", removed);
-  phrases = allPhrases(); idx = Math.min(idx, phrases.length - 1); $("pick").textContent = ""; render();
+  phrases = allPhrases(); idx = Math.min(idx, phrases.length - 1); $("pick").textContent = ""; render(); renderLearnHome();
 };
 
-/* ---------- fichiers WAV échangés (l'identifiant de la phrase voyage dans le fichier) ---------- */
-async function toWav(blob, id){
+/* ---------- onglet Apprendre : cartes et répétition espacée ---------- */
+// Boîtes de Leitner : une carte bien sue remonte d'une boîte et revient plus tard.
+const INTERVAL_DAYS = [0, 0, 1, 3, 7, 16, 35];
+const DAY = 86400000, NEW_PER_SESSION = 5, MAX_REVIEWS = 15;
+const srsKey = () => "pokou.srs." + who, starKey = () => "pokou.stars." + who;
+const getSrs = () => ls.get(srsKey(), {}), setSrs = v => ls.set(srsKey(), v);
+const shuffle = a => { for(let i = a.length - 1; i > 0; i--){ const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const learnable = () => phrases.filter(p => p.br && p.fr);
+function deckState(){
+  const srs = getSrs(), now = Date.now(), cards = learnable();
+  const due = cards.filter(c => srs[c.id] && srs[c.id].due <= now);
+  // Les nouvelles cartes qui ont une voix passent en premier.
+  const fresh = cards.filter(c => !srs[c.id]).sort((a, b) => (voicesOf(b.id).size > 0) - (voicesOf(a.id).size > 0));
+  const known = cards.filter(c => srs[c.id] && srs[c.id].box >= 4).length;
+  return {due, fresh, known, cards};
+}
+function renderLearnHome(){
+  if(!profiles.length) return;
+  const st = deckState();
+  $("lHello").textContent = "Demat " + me().name + " " + me().av;
+  $("stDue").textContent = st.due.length; $("stNew").textContent = st.fresh.length;
+  $("stKnown").textContent = st.known; $("stStars").textContent = ls.get(starKey(), 0);
+  const n = Math.min(st.due.length, MAX_REVIEWS) + Math.min(st.fresh.length, NEW_PER_SESSION);
+  $("lStart").disabled = n === 0;
+  $("lStart").textContent = n ? "Commencer (" + n + " carte" + (n > 1 ? "s" : "") + ")" : "Rien à revoir pour l'instant";
+  $("lNote").textContent = n ? "Environ " + Math.max(1, Math.round(n * 0.6)) + " minutes. Les cartes bien sues reviennent de moins en moins souvent."
+    : "Reviens demain, ou ajoute des mots dans l'onglet Prononcer.";
+}
+let session = null;
+function startSession(){
+  const st = deckState();
+  const steps = shuffle(st.due.slice()).slice(0, MAX_REVIEWS).map(c => ({card: c, kind: reviewKind(c)}));
+  for(const c of st.fresh.slice(0, NEW_PER_SESSION)) steps.push({card: c, kind: "discover"});
+  session = {steps, i: 0, total: steps.length, good: 0, stars: 0, retried: new Set()};
+  $("lHome").hidden = true; $("lCard").hidden = false;
+  showStep();
+}
+function reviewKind(c){
+  const box = (getSrs()[c.id] || {box: 1}).box;
+  if(box <= 2) return voicesOf(c.id).size ? "listen" : "read";
+  return model ? "say" : "pickbr";
+}
+function grade(card, ok, bonus){
+  const srs = getSrs(), s = srs[card.id] || {box: 1, due: 0};
+  if(ok){ s.box = Math.min(6, s.box + 1); s.due = Date.now() + INTERVAL_DAYS[s.box] * DAY; }
+  else { s.box = 1; s.due = Date.now(); }
+  srs[card.id] = s; setSrs(srs);
+  if(ok){ const add = 1 + (bonus || 0); session.stars += add; ls.set(starKey(), ls.get(starKey(), 0) + add); session.good++; }
+  else if(!session.retried.has(card.id)){
+    session.retried.add(card.id);
+    session.steps.push({card, kind: voicesOf(card.id).size ? "listen" : "read"});
+  }
+}
+function el(tag, cls, text){ const e = document.createElement(tag); if(cls) e.className = cls; if(text != null) e.textContent = text; return e; }
+function playCard(card, slow){
+  const u = voiceUrl(card.id); if(!u) return Promise.resolve();
+  const r = rate; rate = slow ? 0.75 : 1;
+  return play(u).then(() => { rate = r; URL.revokeObjectURL(u); });
+}
+function listenBtn(card){
+  if(!voicesOf(card.id).size) return null;
+  const row = el("div", "row");
+  const b = el("button", "primary", "▶ Écouter"); b.onclick = () => playCard(card);
+  const s = el("button", "", "Lentement"); s.onclick = () => playCard(card, true);
+  row.append(b, s); return row;
+}
+function continueBtn(){
+  const b = el("button", "primary big", "Continuer");
+  b.onclick = () => { session.i++; showStep(); };
+  setTimeout(() => b.focus(), 50);
+  return b;
+}
+function feedback(ok, card, extra){
+  const f = el("div", "feedback " + (ok ? "good" : "bad"));
+  f.append(el("strong", "", ok ? ["Mat-tre !", "Bravo !", "Dispar !"][Math.floor(Math.random() * 3)] : "Pas tout à fait."));
+  const brp = el("span", "fbbr", card.br); brp.lang = "br";
+  f.append(brp, el("span", "", card.fr));
+  if(extra) f.append(extra);
+  return f;
+}
+function choicesFor(card, field){
+  const others = shuffle(learnable().filter(c => c.id !== card.id && c[field] !== card[field])).slice(0, 3);
+  return shuffle([card, ...others]);
+}
+function mcq(card, prompt, field, cls){
+  const body = $("lBody");
+  const wrap = el("div", "choices");
+  for(const c of choicesFor(card, field)){
+    const b = el("button", "choice " + (cls || ""), c[field]);
+    if(cls === "br") b.lang = "br";
+    b.onclick = () => {
+      const ok = c.id === card.id;
+      [...wrap.children].forEach(x => { x.disabled = true; });
+      b.classList.add(ok ? "good" : "bad");
+      if(!ok) [...wrap.children].find(x => x.textContent === card[field]).classList.add("good");
+      grade(card, ok);
+      body.append(feedback(ok, card), continueBtn());
+      playCard(card);
+    };
+    wrap.append(b);
+  }
+  body.append(wrap);
+}
+function showStep(){
+  const body = $("lBody"); body.textContent = "";
+  if(session.i >= session.steps.length) return endSession();
+  const {card, kind} = session.steps[session.i];
+  $("lStep").textContent = "Carte " + (session.i + 1) + " sur " + session.steps.length + " · ★ " + session.stars;
+  $("lBar").style.width = Math.round(100 * session.i / session.steps.length) + "%";
+  if(kind === "discover"){
+    body.append(el("span", "label", "Nouvelle carte"));
+    const b = el("p", "br", card.br); b.lang = "br"; body.append(b, el("p", "fr", card.fr));
+    const lb = listenBtn(card);
+    if(lb){ body.append(lb); playCard(card); }
+    else body.append(el("p", "note", "Pas encore de voix pour cette carte. Lis-la à voix haute."));
+    const go = el("button", "primary big", "Je l'ai, on continue");
+    go.onclick = () => {
+      const srs = getSrs(); srs[card.id] = {box: 1, due: Date.now()}; setSrs(srs);
+      session.steps.push({card, kind: voicesOf(card.id).size ? "listen" : "read"});
+      session.i++; showStep();
+    };
+    body.append(go);
+  } else if(kind === "listen"){
+    body.append(el("span", "label", "Écoute et trouve le sens"));
+    body.append(listenBtn(card)); playCard(card);
+    mcq(card, "", "fr");
+  } else if(kind === "read"){
+    body.append(el("span", "label", "Que veut dire"));
+    const b = el("p", "br", card.br); b.lang = "br"; body.append(b);
+    mcq(card, "", "fr");
+  } else if(kind === "pickbr"){
+    body.append(el("span", "label", "Comment dit-on en breton"));
+    body.append(el("p", "ask", "« " + card.fr + " »"));
+    mcq(card, "", "br", "br");
+  } else if(kind === "say"){
+    body.append(el("span", "label", "Dis-le en breton"));
+    body.append(el("p", "ask", "« " + card.fr + " »"));
+    const box = el("div", "mic");
+    const mic = el("button", "micbtn"); mic.setAttribute("aria-label", "Parler");
+    mic.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>';
+    const hint = el("span", "hint", "Touche le micro, dis la phrase en breton, touche à nouveau.");
+    const skip = el("button", "", "Je ne sais pas");
+    let answered = false;
+    const finish = (ok, extra, bonus) => {
+      if(answered) return; answered = true;
+      mic.disabled = true; skip.disabled = true;
+      grade(card, ok, bonus);
+      body.append(feedback(ok, card, extra), continueBtn());
+      playCard(card);
+    };
+    mic.onclick = async () => {
+      if(rec){ stopRecording(); return; }
+      const ok = await startRecording(async blob => {
+        mic.classList.remove("on"); hint.textContent = "Analyse…";
+        try{
+          const res = scoreIt(card.br, await transcribe(await decode(blob)));
+          const sc = res.score == null ? 0 : res.score;
+          hint.textContent = "Le coach te comprend à " + sc + " / 100.";
+          finish(sc >= 60, wordChips(res), sc >= 85 ? 1 : 0);
+        }catch(e){ hint.textContent = "Analyse impossible. Réessaie."; }
+      });
+      if(ok){ mic.classList.add("on"); hint.textContent = "J'écoute… touche pour arrêter."; }
+    };
+    skip.onclick = () => finish(false);
+    box.append(mic, hint, skip); body.append(box);
+  }
+}
+function endSession(){
+  const body = $("lBody"); body.textContent = "";
+  $("lStep").textContent = "Terminé"; $("lBar").style.width = "100%";
+  body.append(el("p", "hello", "Mat-tre, " + me().name + " !"));
+  body.append(el("p", "", session.good + " bonne" + (session.good > 1 ? "s" : "") + " réponse" + (session.good > 1 ? "s" : "") + " · ★ " + session.stars + " gagnée" + (session.stars > 1 ? "s" : "") + "."));
+  const b = el("button", "primary big", "Retour");
+  b.onclick = () => { session = null; $("lCard").hidden = true; $("lHome").hidden = false; renderLearnHome(); };
+  body.append(b);
+}
+$("lStart").onclick = startSession;
+function endLearning(){ session = null; $("lCard").hidden = true; $("lHome").hidden = false; renderLearnHome(); }
+function setTab(t){
+  ls.set("pokou.tab", t);
+  $("tabLearn").setAttribute("aria-pressed", t === "learn"); $("tabSay").setAttribute("aria-pressed", t === "say");
+  $("learn").hidden = t !== "learn"; $("practice").hidden = t !== "say";
+  if(t === "learn" && !session) renderLearnHome();
+}
+$("tabLearn").onclick = () => setTab("learn");
+$("tabSay").onclick = () => setTab("say");
+
+/* ---------- fichiers WAV échangés : identifiant, texte et voix voyagent dans le fichier ---------- */
+function infoChunk(tag, text){
+  const b = new TextEncoder().encode(text + "\0");
+  const len = b.length + (b.length % 2);
+  const out = new Uint8Array(8 + len);
+  out.set([...tag].map(c => c.charCodeAt(0)), 0);
+  new DataView(out.buffer).setUint32(4, b.length, true);
+  out.set(b, 8);
+  return out;
+}
+async function toWav(blob, meta){
   const ab = await new OfflineAudioContext(1, 1, 24000).decodeAudioData(await blob.arrayBuffer());
   const d = ab.getChannelData(0), sr = ab.sampleRate;
-  const name = new TextEncoder().encode("pokou:" + id + "\0");
-  const nameLen = name.length + (name.length % 2);
-  const listLen = 4 + 8 + nameLen;
-  const dataLen = d.length * 2;
-  const buf = new ArrayBuffer(12 + 24 + 8 + listLen + 8 + dataLen), v = new DataView(buf);
+  const nam = infoChunk("INAM", "pokou:" + meta.id), cmt = infoChunk("ICMT", "pokoujson:" + JSON.stringify(meta));
+  const listLen = 4 + nam.length + cmt.length, dataLen = d.length * 2;
+  const buf = new ArrayBuffer(12 + 24 + 8 + listLen + 8 + dataLen), v = new DataView(buf), u8 = new Uint8Array(buf);
   let o = 0;
   const str = s => { for(const c of s) v.setUint8(o++, c.charCodeAt(0)); };
   const u32 = x => { v.setUint32(o, x, true); o += 4; }, u16 = x => { v.setUint16(o, x, true); o += 2; };
   str("RIFF"); u32(buf.byteLength - 8); str("WAVE");
   str("fmt "); u32(16); u16(1); u16(1); u32(sr); u32(sr * 2); u16(2); u16(16);
-  str("LIST"); u32(listLen); str("INFO"); str("INAM"); u32(nameLen);
-  new Uint8Array(buf, o, name.length).set(name); o += nameLen;
+  str("LIST"); u32(listLen); str("INFO");
+  u8.set(nam, o); o += nam.length; u8.set(cmt, o); o += cmt.length;
   str("data"); u32(dataLen);
   for(let i = 0; i < d.length; i++, o += 2) v.setInt16(o, Math.max(-1, Math.min(1, d[i])) * 0x7fff, true);
   return new Blob([buf], {type: "audio/wav"});
 }
-async function idFromFile(file){
+async function metaFromFile(file){
   try{
-    const b = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
-    const t = new TextDecoder("latin1").decode(b);
+    const t = new TextDecoder("utf-8").decode(new Uint8Array(await file.slice(0, 16384).arrayBuffer()));
+    const j = t.match(/pokoujson:(\{[^\0]*\})\0/);
+    if(j) return JSON.parse(j[1]);
     const m = t.match(/(?:pokou|distagan):([^\0]+)\0/);
-    if(m) return decodeURIComponent(escape(m[1]));
+    if(m) return {id: m[1]};
   }catch{}
   const n = file.name.match(/(?:pokou|distagan)-(.+?)\.[a-z0-9]+$/i);
-  return n ? n[1] : null;
+  return n ? {id: n[1]} : null;
 }
+const safeName = s => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase() || "voix";
 
-/* ---------- mode maman ---------- */
-let momFiles = null;
+/* ---------- mode enregistrement (maman ou un autre proche) ---------- */
+let momFiles = null, VOICE = DEFAULT_VOICE;
+const momPhrases = () => ls.get("pokou.rec.phrases", []);
+function recPhrases(){ return base.concat(momPhrases()); }
 async function renderMom(){
   const p = cur();
-  $("momCount").textContent = "Phrase " + (idx + 1) + " sur " + phrases.length;
+  $("momCount").textContent = (p.mine ? "Votre phrase · " : "") + "Phrase " + (idx + 1) + " sur " + phrases.length;
   $("momBr").textContent = p.br; $("momFr").textContent = p.fr || "";
-  const r = await getRef(p.id);
+  const r = voicesOf(p.id).get(VOICE);
   if(refUrl){ URL.revokeObjectURL(refUrl); refUrl = null; }
   if(r && r.blob) refUrl = URL.createObjectURL(r.blob);
   $("momOk").hidden = !refUrl; $("momPlay").hidden = !refUrl;
   $("momHint").textContent = refUrl ? "Pour recommencer, touchez à nouveau le rond." : "Touchez le rond, lisez la phrase, puis touchez-le encore.";
   $("momNext").textContent = idx === phrases.length - 1 ? "Terminé" : "Suivante ›";
-  let n = 0; for(const q of phrases) if(await getRef(q.id)) n++;
+  const n = phrases.filter(q => voicesOf(q.id).has(VOICE)).length;
   $("momTally").textContent = "Déjà enregistrées : " + n + " sur " + phrases.length + ". Vous pouvez envoyer à tout moment, même si tout n'est pas fini.";
 }
 async function momShare(files){
@@ -630,8 +1007,11 @@ async function momSend(){
   $("momSendInfo").textContent = "Préparation des fichiers…";
   const files = [];
   for(const p of phrases){
-    const r = await getRef(p.id);
-    if(r && r.blob) files.push(new File([await toWav(r.blob, p.id)], "pokou-" + p.id + ".wav", {type: "audio/wav"}));
+    const r = voicesOf(p.id).get(VOICE);
+    if(r && r.blob){
+      const meta = {id: p.id, br: p.br, fr: p.fr || "", voice: VOICE};
+      files.push(new File([await toWav(r.blob, meta)], "pokou-" + safeName(VOICE) + "-" + p.id + ".wav", {type: "audio/wav"}));
+    }
   }
   if(!files.length){ $("momSendInfo").textContent = "Aucune phrase enregistrée pour l'instant."; return; }
   if(navigator.canShare && navigator.canShare({files})) return momShare(files);
@@ -646,13 +1026,13 @@ async function momSend(){
 function startMom(){
   document.body.classList.add("mom");
   $("app").hidden = true; $("status").hidden = true; $("mom").hidden = false;
-  $("subtitle").textContent = "Enregistrer les phrases modèles";
+  $("subtitle").textContent = VOICE === DEFAULT_VOICE ? "Enregistrer les phrases modèles" : "Enregistrer les phrases modèles · voix de " + VOICE;
   $("momMic").onclick = async () => {
     if(rec){ stopRecording(); return; }
     const id = cur().id;
     const ok = await startRecording(async blob => {
       $("momMic").classList.remove("on"); $("momMic").setAttribute("aria-label", "Enregistrer");
-      await putRef(id, {blob, score: null, date: Date.now()});
+      await putVoice(id, VOICE, {blob, score: null, date: Date.now()});
       renderMom();
     });
     if(ok){ $("momMic").classList.add("on"); $("momMic").setAttribute("aria-label", "Arrêter"); $("momHint").textContent = "J'enregistre… touchez le rond quand vous avez fini."; $("momOk").hidden = true; }
@@ -664,36 +1044,62 @@ function startMom(){
     if(idx === phrases.length - 1){ $("momSend").scrollIntoView({behavior: "smooth", block: "center"}); return; }
     idx++; renderMom();
   };
+  $("momAdd").onsubmit = e => {
+    e.preventDefault();
+    const br = $("momNewBr").value.trim(); if(!br) return;
+    const list = momPhrases(), id = "m" + Date.now().toString(36);
+    list.push({id, br, fr: $("momNewFr").value.trim(), mine: true}); ls.set("pokou.rec.phrases", list);
+    phrases = recPhrases(); idx = phrases.length - 1;
+    $("momNewBr").value = ""; $("momNewFr").value = ""; $("momAddBox").open = false;
+    renderMom(); $("momMic").scrollIntoView({behavior: "smooth", block: "center"});
+  };
   $("momSend").onclick = momSend;
   $("momShareNow").onclick = () => momFiles && momShare(momFiles);
   idx = 0; renderMom();
 }
 
-/* ---------- côté Perig : lien et import ---------- */
-const momUrl = location.href.split("#")[0] + "#maman";
-$("momLink").textContent = momUrl;
+/* ---------- côté apprenant : lien d'invitation et import ---------- */
+function inviteUrl(){
+  const n = $("inviteName").value.trim() || DEFAULT_VOICE;
+  return location.href.split("#")[0] + (n === DEFAULT_VOICE ? "#maman" : "#voix=" + encodeURIComponent(n));
+}
+const updateLink = () => { $("momLink").textContent = inviteUrl(); $("copyLink").textContent = "Copier"; };
+$("inviteName").oninput = updateLink; updateLink();
 $("copyLink").onclick = () => {
-  navigator.clipboard.writeText(momUrl).then(() => $("copyLink").textContent = "Copié", () => {
+  const u = inviteUrl();
+  navigator.clipboard.writeText(u).then(() => $("copyLink").textContent = "Copié", () => {
     const r = document.createRange(); r.selectNodeContents($("momLink")); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
   });
 };
 $("refImport").onchange = async e => {
   const files = [...e.target.files]; e.target.value = "";
-  const ids = new Set(phrases.map(p => p.id));
-  let ok = 0; const unknown = [];
+  let ok = 0, added = 0; const unknown = [], voices = new Set();
   for(const f of files){
-    const id = await idFromFile(f);
-    if(id && ids.has(id)){ await putRef(id, {blob: f, score: null, date: Date.now()}); ok++; }
-    else unknown.push(f.name);
+    const meta = await metaFromFile(f);
+    if(!meta || !meta.id){ unknown.push(f.name); continue; }
+    if(!phrases.some(p => p.id === meta.id)){
+      if(!meta.br){ unknown.push(f.name); continue; }
+      const extra = ls.get("distagan.phrases", []);
+      if(!extra.some(p => p.id === meta.id)){ extra.push({id: meta.id, br: meta.br, fr: meta.fr || "", from: meta.voice || DEFAULT_VOICE}); ls.set("distagan.phrases", extra); added++; }
+      phrases = allPhrases();
+    }
+    const voice = meta.voice || DEFAULT_VOICE; voices.add(voice);
+    await putVoice(meta.id, voice, {blob: f, score: null, date: Date.now()});
+    ok++;
   }
-  $("importInfo").textContent = ok + " enregistrement" + (ok > 1 ? "s" : "") + " importé" + (ok > 1 ? "s" : "") + "."
-    + (unknown.length ? " Non reconnus : " + unknown.join(", ") + " (tu peux les importer un par un avec le bouton au-dessus, sur la bonne phrase)." : "");
-  render();
+  $("importInfo").textContent = ok + " enregistrement" + (ok > 1 ? "s" : "") + " importé" + (ok > 1 ? "s" : "")
+    + (voices.size ? " (voix : " + [...voices].join(", ") + ")" : "") + "."
+    + (added ? " " + added + " nouvelle" + (added > 1 ? "s" : "") + " phrase" + (added > 1 ? "s" : "") + " ajoutée" + (added > 1 ? "s" : "") + " au paquet." : "")
+    + (unknown.length ? " Non reconnus : " + unknown.join(", ") + " (importe-les un par un avec « importer un fichier », sur la bonne phrase)." : "");
+  $("pick").textContent = ""; render(); renderLearnHome();
   // Note du coach sur chaque voix importée, en arrière-plan une fois le modèle prêt.
-  for(const p of phrases){
-    const r = await getRef(p.id);
-    if(!r || r.score != null || !model) continue;
-    try{ const res = scoreIt(p.br, await transcribe(await decode(r.blob))); await putRef(p.id, {...r, score: res.score}); }catch{}
+  for(const [id, m] of REFS){
+    const p = phrases.find(q => q.id === id); if(!p) continue;
+    for(const [v, r] of m){
+      if(r.score != null || !model || !r.blob) continue;
+      const sc = await scoreVoice(p, r.blob);
+      if(sc != null) await putVoice(id, v, {...r, score: sc});
+    }
   }
   render();
 };
@@ -702,10 +1108,17 @@ window.addEventListener("hashchange", () => location.reload());
 (async () => {
   $("recRef").disabled = true;
   idb = await openDb();
+  await loadRefs();
   try{ base = await (await fetch("phrases.json")).json(); }catch{ base = [{id:"demat", br:"Demat, penaos emañ kont ?", fr:"Bonjour, comment ça va ?"}]; }
+  const h = location.hash;
+  if(h === "#maman" || h.startsWith("#voix=")){
+    VOICE = h === "#maman" ? DEFAULT_VOICE : (decodeURIComponent(h.slice(6)).trim().slice(0, 24) || DEFAULT_VOICE);
+    phrases = recPhrases(); startMom(); return;
+  }
   phrases = allPhrases();
-  if(location.hash === "#maman"){ phrases = base.slice(); startMom(); return; }
   const last = ls.get("distagan.idx", null); const k = phrases.findIndex(p => p.id === last); idx = k >= 0 ? k : 0;
+  renderWho();
+  setTab(ls.get("pokou.tab", "learn"));
   render();
   loadModel();
 })();

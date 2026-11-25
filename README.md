@@ -15,7 +15,14 @@ transcrit avec le modèle Vosk breton d'Anaouder et colore chaque mot.
 Le micro exige une adresse HTTPS (ou localhost). Publié avec GitHub Pages : https://periggouanvic.github.io/Pokou/
 Test local : `python3 -m http.server 8000`, puis http://localhost:8000
 
+## Apprendre
+Onglet « Apprendre » : cartes de vocabulaire avec répétition espacée (boîtes de Leitner), par profil.
+Exercices : découverte, écouter et trouver le sens, lire et trouver le sens, choisir la phrase bretonne,
+et « dis-le en breton » noté par le coach. Chaque profil (« Qui apprend ? ») a sa progression et ses étoiles.
+
 ## Voix de référence
+- Plusieurs voix par phrase : chaque proche reçoit un lien à son nom, `…/Pokou/#voix=Nom` (`#maman` reste valable).
+  Il peut aussi ajouter ses propres mots et phrases ; le texte, la traduction et le nom de la voix voyagent dans le fichier WAV.
 - Depuis chez elle : la personne modèle ouvre https://periggouanvic.github.io/Pokou/#maman, enregistre les phrases et touche « Envoyer mes enregistrements » (partage Android : courriel, WhatsApp…). Les fichiers WAV portent l'identifiant de la phrase ; on les importe dans « Enregistrer la voix de référence > Importer les fichiers reçus ».
 - Dans l'appli : « Enregistrer la voix de référence » (stocké sur l'appareil).
 - Ou pour tous les appareils : déposer `refs/<id>.mp3` et ajouter `"ref": "refs/<id>.mp3"` à la phrase dans `phrases.json`.
