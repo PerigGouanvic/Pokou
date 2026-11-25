@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>Distagañ</title>
+<title>Pokou</title>
 <meta name="description" content="Coach de prononciation bretonne qui écoute ta voix, hors ligne, dans le navigateur.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,650&family=Inter:wght@400;500;600&display=swap">
@@ -108,7 +108,7 @@ body.mom{font-size:18px}
 <body>
 <div class="wrap">
   <header>
-    <h1>Distagañ<small id="subtitle">Coach de prononciation bretonne</small></h1>
+    <h1>Pokou<small id="subtitle">Coach de prononciation bretonne</small></h1>
   </header>
 
   <section id="mom" class="stack" hidden>
@@ -567,7 +567,7 @@ $("delPhrase").onclick = () => {
 async function toWav(blob, id){
   const ab = await new OfflineAudioContext(1, 1, 24000).decodeAudioData(await blob.arrayBuffer());
   const d = ab.getChannelData(0), sr = ab.sampleRate;
-  const name = new TextEncoder().encode("distagan:" + id + "\0");
+  const name = new TextEncoder().encode("pokou:" + id + "\0");
   const nameLen = name.length + (name.length % 2);
   const listLen = 4 + 8 + nameLen;
   const dataLen = d.length * 2;
@@ -587,10 +587,10 @@ async function idFromFile(file){
   try{
     const b = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
     const t = new TextDecoder("latin1").decode(b);
-    const m = t.match(/distagan:([^\0]+)\0/);
+    const m = t.match(/(?:pokou|distagan):([^\0]+)\0/);
     if(m) return decodeURIComponent(escape(m[1]));
   }catch{}
-  const n = file.name.match(/distagan-(.+?)\.[a-z0-9]+$/i);
+  const n = file.name.match(/(?:pokou|distagan)-(.+?)\.[a-z0-9]+$/i);
   return n ? n[1] : null;
 }
 
@@ -611,7 +611,7 @@ async function renderMom(){
 }
 async function momShare(files){
   try{
-    await navigator.share({files, title: "Enregistrements Distagañ", text: "Mes enregistrements pour Distagañ"});
+    await navigator.share({files, title: "Enregistrements Pokou", text: "Mes enregistrements pour Pokou"});
     $("momSendInfo").textContent = "Envoyé. Trugarez !"; $("momShareNow").hidden = true;
   }catch(e){
     if(e.name === "AbortError"){ $("momSendInfo").textContent = "Envoi annulé. Vous pouvez réessayer."; return; }
@@ -624,7 +624,7 @@ async function momSend(){
   const files = [];
   for(const p of phrases){
     const r = await getRef(p.id);
-    if(r && r.blob) files.push(new File([await toWav(r.blob, p.id)], "distagan-" + p.id + ".wav", {type: "audio/wav"}));
+    if(r && r.blob) files.push(new File([await toWav(r.blob, p.id)], "pokou-" + p.id + ".wav", {type: "audio/wav"}));
   }
   if(!files.length){ $("momSendInfo").textContent = "Aucune phrase enregistrée pour l'instant."; return; }
   if(navigator.canShare && navigator.canShare({files})) return momShare(files);

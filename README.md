@@ -1,4 +1,4 @@
-# Distagañ, coach de prononciation bretonne
+# Pokou, coach de prononciation bretonne
 
 Page web statique qui fonctionne entièrement dans le navigateur (ordinateur ou Android) :
 la phrase cible s'affiche, on écoute la voix de référence, on s'enregistre, puis le coach
