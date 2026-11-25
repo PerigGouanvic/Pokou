@@ -27,6 +27,11 @@ et « dis-le en breton » noté par le coach. Chaque profil (« Qui apprend ? »
 - Dans l'appli : « Enregistrer la voix de référence » (stocké sur l'appareil).
 - Ou pour tous les appareils : déposer `refs/<id>.mp3` et ajouter `"ref": "refs/<id>.mp3"` à la phrase dans `phrases.json`.
 
+## Voix libres
+Onglet « Prononcer » et nouvelles cartes : chaque mot de la phrase se touche pour entendre un enregistrement
+Lingua Libre (fichiers « LL-Q12107 (bre)-Locuteur-mot.wav » sur Wikimedia Commons), cherché à la volée par l'API Commons.
+L'auteur et la licence de l'enregistrement joué s'affichent, avec un lien vers la page du fichier.
+
 ## Limites
 - La note mesure si la machine reconnaît les mots, pas l'accent.
 - Modèle entraîné surtout sur Brezhoweb, Dizale, Common Voice : le breton standard est mieux reconnu que certains parlers locaux.

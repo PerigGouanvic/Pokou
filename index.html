@@ -133,6 +133,12 @@ body.mom{font-size:18px}
 .avpick button[aria-pressed="true"]{border-color:var(--accent);border-width:2px;background:var(--bg)}
 .chip{min-height:34px;padding:4px 12px;border-radius:999px;font-size:.85rem}
 .chip[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.wordstrip{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.wchip{font:500 1rem/1.2 var(--f-br);min-height:38px}
+.wchip.loading{opacity:.6}
+.wchip.none{text-decoration:line-through;color:var(--muted)}
+.credit{width:100%;margin:2px 0 0}
+.credit a{color:var(--accent)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -241,6 +247,10 @@ body.mom{font-size:18px}
         <span class="note" id="refInfo"></span>
       </div>
       <div class="row" id="voices" role="group" aria-label="Choisir la voix"></div>
+    </div>
+    <div class="refline">
+      <span class="label">Mot à mot, voix libres</span>
+      <div id="llStrip"></div>
       <div class="row" id="noRef" hidden>
         <button id="addRef" class="primary">Ajouter une voix modèle</button>
         <a class="extlink" id="sintezenn" href="https://niverel.brezhoneg.bzh/fr/sintezenn/" target="_blank" rel="noopener">Entendre avec Sintezenn ↗</a>
@@ -316,6 +326,7 @@ body.mom{font-size:18px}
 
   <footer>
     <span>La note mesure si la machine reconnaît les mots attendus. Elle ne juge pas l'accent : un mot « bien reconnu » peut encore sonner étranger, et un parler local juste peut être mal compris. Ta mère reste la meilleure juge.</span>
+    <span>Voix libres : enregistrements de <a href="https://lingualibre.org" target="_blank" rel="noopener">Lingua Libre</a> hébergés sur Wikimedia Commons. L'auteur et la licence de chaque enregistrement s'affichent quand on l'écoute.</span>
     <span>Reconnaissance vocale : modèle <code>vosk-model-br-26.01</code> d'<a href="https://github.com/gweltou/anaouder-cli" target="_blank" rel="noopener">Anaouder</a> (Gweltaz Duval-Guennoc), exécuté dans le navigateur avec <a href="https://www.npmjs.com/package/vosk-browser" target="_blank" rel="noopener">vosk-browser</a>. Rien n'est envoyé sur internet.</span>
   </footer>
   </div>
@@ -630,6 +641,7 @@ async function render(){
   else if(p.ref){ refUrl = p.ref; $("refInfo").textContent = "Voix de référence fournie"; }
   else { $("refInfo").textContent = "Pas encore de voix modèle pour cette phrase. Fais-la enregistrer par un proche bretonnant, ou écoute la voix de synthèse Sintezenn : la phrase sera copiée, il suffira de la coller."; }
   renderVoices(p);
+  $("llStrip").replaceChildren(wordStrip(p.br));
   $("playRef").hidden = !refUrl; document.querySelector(".speed").hidden = !refUrl; $("noRef").hidden = !!refUrl;
   $("delRef").hidden = !r;
   $("refScore").textContent = r && r.score != null ? "Le coach comprend la voix de " + v + " à " + r.score + " / 100 sur cette phrase. Vise à peu près ce niveau." : "";
@@ -749,6 +761,69 @@ $("delPhrase").onclick = () => {
   phrases = allPhrases(); idx = Math.min(idx, phrases.length - 1); $("pick").textContent = ""; render(); renderLearnHome();
 };
 
+/* ---------- voix libres : mots enregistrés sur Lingua Libre (Wikimedia Commons) ---------- */
+const LL_API = "https://commons.wikimedia.org/w/api.php", LL_PREFIX = "File:LL-Q12107 (bre)-";
+const llCache = new Map(Object.entries(ls.get("pokou.ll", {})));
+const llNorm = w => w.normalize("NFC").toLowerCase().replace(/[’‘ʼ`´]/g, "'");
+const stripHtml = h => { try{ return new DOMParser().parseFromString(h || "", "text/html").body.textContent.trim(); }catch{ return ""; } };
+async function llLookup(word){
+  const w = llNorm(word);
+  if(llCache.has(w)) return llCache.get(w);
+  const q = new URLSearchParams({action: "query", format: "json", origin: "*", generator: "search", gsrnamespace: "6", gsrlimit: "40",
+    gsrsearch: 'intitle:"LL-Q12107 (bre)" intitle:"' + w + '"', prop: "imageinfo", iiprop: "url|extmetadata",
+    iiextmetadatafilter: "Artist|LicenseShortName|LicenseUrl"});
+  const r = await fetch(LL_API + "?" + q);
+  if(!r.ok) throw new Error("HTTP " + r.status);
+  const j = await r.json();
+  const found = [];
+  for(const p of Object.values((j.query && j.query.pages) || {})){
+    const t = p.title || "", end = "-" + w;
+    const dot = t.lastIndexOf("."); if(dot < 0 || !t.startsWith(LL_PREFIX)) continue;
+    const stem = t.slice(0, dot);
+    if(!llNorm(stem).endsWith(end)) continue;
+    const speaker = stem.slice(LL_PREFIX.length, stem.length - end.length);
+    const ii = (p.imageinfo || [])[0]; if(!ii || !ii.url) continue;
+    const md = ii.extmetadata || {};
+    found.push({url: ii.url, page: ii.descriptionurl || "", speaker,
+      artist: stripHtml(md.Artist && md.Artist.value) || speaker,
+      license: stripHtml(md.LicenseShortName && md.LicenseShortName.value) || "licence libre",
+      licenseUrl: (md.LicenseUrl && md.LicenseUrl.value) || ""});
+  }
+  llCache.set(w, found);
+  // On ne garde d'une visite à l'autre que les mots trouvés : un mot absent sera recherché à nouveau.
+  const keep = Object.fromEntries([...llCache.entries()].filter(([, v]) => v.length).slice(-400));
+  ls.set("pokou.ll", keep);
+  return found;
+}
+function wordStrip(text){
+  const box = el("div", "wordstrip"), credit = el("p", "note credit");
+  for(const tok of displayTokens(text)){
+    const w = normalize(tok)[0]; if(!w) continue;
+    const b = el("button", "chip wchip", tok.replace(/[-.,!?;:…]+$/, "")); b.lang = "br";
+    b.onclick = async () => {
+      b.classList.add("loading");
+      try{
+        const list = await llLookup(w);
+        b.classList.remove("loading");
+        if(!list.length){ b.classList.add("none"); credit.textContent = "Pas encore de voix libre pour « " + w + " »."; return; }
+        const k = (+b.dataset.k || 0) % list.length; b.dataset.k = k + 1;
+        const c = list[k];
+        credit.textContent = "« " + w + " » · voix de " + c.artist + (list.length > 1 ? " (" + (k + 1) + "/" + list.length + ", touche encore pour une autre voix)" : "") + " · ";
+        const a = el("a", "", "Lingua Libre, " + c.license);
+        if(/^https:\/\//.test(c.page)){ a.href = c.page; a.target = "_blank"; a.rel = "noopener"; }
+        credit.append(a);
+        const r = rate; rate = 1; await play(c.url); rate = r;
+      }catch(e){
+        b.classList.remove("loading");
+        credit.textContent = "Les voix libres sont injoignables pour l'instant. Vérifie la connexion internet.";
+      }
+    };
+    box.append(b);
+  }
+  box.append(credit);
+  return box;
+}
+
 /* ---------- onglet Apprendre : cartes et répétition espacée ---------- */
 // Boîtes de Leitner : une carte bien sue remonte d'une boîte et revient plus tard.
 const INTERVAL_DAYS = [0, 0, 1, 3, 7, 16, 35];
@@ -863,7 +938,8 @@ function showStep(){
     const b = el("p", "br", card.br); b.lang = "br"; body.append(b, el("p", "fr", card.fr));
     const lb = listenBtn(card);
     if(lb){ body.append(lb); playCard(card); }
-    else body.append(el("p", "note", "Pas encore de voix pour cette carte. Lis-la à voix haute."));
+    else body.append(el("p", "note", "Pas encore de voix pour cette phrase entière. Écoute les mots un par un :"));
+    body.append(wordStrip(card.br));
     const go = el("button", "primary big", "Je l'ai, on continue");
     go.onclick = () => {
       const srs = getSrs(); srs[card.id] = {box: 1, due: Date.now()}; setSrs(srs);
