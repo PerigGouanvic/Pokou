@@ -1,0 +1,18 @@
+[
+  {"id": "demat", "br": "Demat, penaos emañ kont ?", "fr": "Bonjour, comment ça va ?"},
+  {"id": "mat-tre", "br": "Mat-tre, trugarez.", "fr": "Très bien, merci."},
+  {"id": "anv", "br": "Petra eo da anv ?", "fr": "Comment t'appelles-tu ?"},
+  {"id": "teskin", "br": "Me a zo o teskiñ brezhoneg.", "fr": "J'apprends le breton."},
+  {"id": "mamm", "br": "Ma mamm a gomz brezhoneg ganin.", "fr": "Ma mère me parle breton."},
+  {"id": "chom", "br": "E pelec'h emaout o chom ?", "fr": "Où habites-tu ?"},
+  {"id": "amzer", "br": "Amzer vrav a ra hiziv.", "fr": "Il fait beau aujourd'hui."},
+  {"id": "glav", "br": "Glav a ra.", "fr": "Il pleut."},
+  {"id": "kafe", "br": "Ur banne kafe, mar plij.", "fr": "Un café, s'il te plaît."},
+  {"id": "nouzon", "br": "N'ouzon ket.", "fr": "Je ne sais pas."},
+  {"id": "komprenan", "br": "Ne gomprenan ket.", "fr": "Je ne comprends pas."},
+  {"id": "adlavaret", "br": "Gallout a rez adlavaret, mar plij ?", "fr": "Peux-tu répéter, s'il te plaît ?"},
+  {"id": "lavaret", "br": "Penaos e vez lavaret se e brezhoneg ?", "fr": "Comment dit-on ça en breton ?"},
+  {"id": "chwech", "br": "C'hwec'h den a zo en ti.", "fr": "Il y a six personnes dans la maison."},
+  {"id": "noz", "br": "Noz vat.", "fr": "Bonne nuit."},
+  {"id": "kenavo", "br": "Kenavo ar wech all !", "fr": "Au revoir, à la prochaine !"}
+]

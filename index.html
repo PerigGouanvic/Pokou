@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Distagañ</title>
+<meta name="description" content="Coach de prononciation bretonne qui écoute ta voix, hors ligne, dans le navigateur.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:opsz,wght@7..72,500;7..72,650&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Mise en page : une colonne étroite, la phrase en grand, le bouton micro comme pivot. */
+:root{
+  --bg:#eef1f2; --surface:#ffffff; --fg:#1a2228; --muted:#5b6870; --line:#d3dade;
+  --accent:#1f5a85; --accent-ink:#ffffff; --rec:#c2413a;
+  --ok:#2c7a4b; --ok-bg:#dcefe3; --mid:#946200; --mid-bg:#f6ead0; --bad:#b23a35; --bad-bg:#f6dcda; --gone:#76838b; --gone-bg:#e4e8ea;
+  --f-br:"Literata",Georgia,"Times New Roman",serif; --f-ui:"Inter",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#12181c; --surface:#1b2328; --fg:#e6ebee; --muted:#9aa7ae; --line:#2e3a41;
+  --accent:#6fa9d6; --accent-ink:#0d1a24; --rec:#e0675f;
+  --ok:#7fcf9c; --ok-bg:#1f3a2a; --mid:#e7bd62; --mid-bg:#3b3020; --bad:#f08a83; --bad-bg:#432523; --gone:#8e9ba2; --gone-bg:#262f35;
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#12181c; --surface:#1b2328; --fg:#e6ebee; --muted:#9aa7ae; --line:#2e3a41;
+  --accent:#6fa9d6; --accent-ink:#0d1a24; --rec:#e0675f;
+  --ok:#7fcf9c; --ok-bg:#1f3a2a; --mid:#e7bd62; --mid-bg:#3b3020; --bad:#f08a83; --bad-bg:#432523; --gone:#8e9ba2; --gone-bg:#262f35;
+  color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-ui);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.wrap{max-width:640px;margin:0 auto;padding-block:20px 48px;display:flex;flex-direction:column;gap:16px}
+header{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap}
+h1{font:650 1.6rem/1.1 var(--f-br);margin:0;letter-spacing:-.01em}
+h1 small{display:block;font:500 .8rem var(--f-ui);color:var(--muted);letter-spacing:.02em;margin-top:4px}
+button,select,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 14px;min-height:40px}
+button:hover{border-color:var(--accent)}
+button:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+button:disabled{opacity:.5;cursor:not-allowed}
+.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+.status{font-size:.85rem;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+.bar{height:6px;border-radius:3px;background:var(--line);overflow:hidden}
+.bar>i{display:block;height:100%;width:0;background:var(--accent);transition:width .2s}
+.nav{display:flex;gap:8px;align-items:center}
+.nav select{flex:1;min-width:0;min-height:40px;border-radius:10px;border:1px solid var(--line);background:var(--surface);padding:0 10px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:20px;display:flex;flex-direction:column;gap:16px}
+.br{font:500 clamp(1.5rem,5.5vw,2.1rem)/1.3 var(--f-br);margin:0;text-wrap:balance}
+.fr{color:var(--muted);margin:-8px 0 0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.label{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.refline{display:flex;flex-direction:column;gap:8px}
+.speed{display:inline-flex;border:1px solid var(--line);border-radius:10px;overflow:hidden}
+.speed button{border:0;border-radius:0;min-height:38px;padding:6px 10px}
+.speed button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.mic{display:flex;flex-direction:column;align-items:center;gap:8px;padding-block:8px}
+.micbtn{width:88px;height:88px;border-radius:50%;border:0;background:var(--accent);color:var(--accent-ink);display:grid;place-items:center;box-shadow:0 2px 0 rgba(0,0,0,.08)}
+.micbtn svg{width:36px;height:36px}
+.micbtn.on{background:var(--rec);animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 12px color-mix(in srgb,var(--rec) 18%,transparent)}}
+@media (prefers-reduced-motion:reduce){.micbtn.on{animation:none}}
+.hint{font-size:.85rem;color:var(--muted);text-align:center}
+.result{display:flex;flex-direction:column;gap:12px;border-top:1px solid var(--line);padding-top:16px}
+.scoreline{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.score{font:650 2.4rem/1 var(--f-br);font-variant-numeric:tabular-nums}
+.verdict{font-weight:600}
+.words{display:flex;flex-wrap:wrap;gap:6px}
+.w{font:500 1.15rem/1.2 var(--f-br);padding:6px 10px;border-radius:8px;display:inline-flex;flex-direction:column;gap:2px}
+.w small{font:500 .72rem var(--f-ui);opacity:.9}
+.w.ok{background:var(--ok-bg);color:var(--ok)}
+.w.fragile,.w.proche{background:var(--mid-bg);color:var(--mid)}
+.w.rate{background:var(--bad-bg);color:var(--bad)}
+.w.manque{background:var(--gone-bg);color:var(--gone);text-decoration:line-through}
+.w.inconnu{background:transparent;color:var(--muted);border:1px dashed var(--line)}
+.legend{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.78rem;color:var(--muted)}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px;background:var(--c)}
+.heard{font-size:.9rem;color:var(--muted)}
+.heard b{color:var(--fg);font-weight:500;font-family:var(--f-br)}
+.hist{display:flex;gap:4px;align-items:flex-end;height:36px}
+.hist i{width:10px;border-radius:2px 2px 0 0;background:var(--accent);opacity:.75}
+details{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 16px}
+summary{cursor:pointer;font-weight:600}
+details>div{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.field{display:flex;flex-direction:column;gap:4px}
+.field input{border:1px solid var(--line);border-radius:8px;padding:8px 10px;background:var(--bg)}
+.err{color:var(--bad);font-size:.9rem}
+.note{font-size:.82rem;color:var(--muted)}
+footer{font-size:.78rem;color:var(--muted);display:flex;flex-direction:column;gap:6px}
+footer a{color:var(--accent)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Distagañ<small>Coach de prononciation bretonne</small></h1>
+  </header>
+
+  <div class="status" id="status" role="status">
+    <span id="statusText">Chargement du modèle de reconnaissance bretonne…</span>
+    <div class="bar"><i id="statusBar"></i></div>
+  </div>
+
+  <div class="nav">
+    <button id="prev" aria-label="Phrase précédente">‹</button>
+    <label class="sr" for="pick">Choisir une phrase</label>
+    <select id="pick"></select>
+    <button id="next" aria-label="Phrase suivante">›</button>
+  </div>
+
+  <section class="card" aria-live="polite">
+    <p class="br" id="br" lang="br"></p>
+    <p class="fr" id="fr"></p>
+
+    <div class="refline">
+      <span class="label">Modèle à imiter</span>
+      <div class="row">
+        <button id="playRef" class="primary">Écouter</button>
+        <div class="speed" role="group" aria-label="Vitesse">
+          <button data-rate="1" aria-pressed="true">1×</button>
+          <button data-rate="0.75" aria-pressed="false">0,75×</button>
+          <button data-rate="0.6" aria-pressed="false">0,6×</button>
+        </div>
+        <span class="note" id="refInfo"></span>
+      </div>
+    </div>
+
+    <div class="mic">
+      <button class="micbtn" id="mic" aria-label="S'enregistrer" disabled>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+      </button>
+      <span class="hint" id="micHint">Touche le micro, dis la phrase, touche à nouveau.</span>
+      <label class="note" id="fileFallback" hidden>Pas de micro ici ? Envoie un enregistrement :
+        <input type="file" id="fileIn" accept="audio/*" capture>
+      </label>
+    </div>
+
+    <div class="result" id="result" hidden>
+      <div class="scoreline">
+        <span class="score" id="score">0</span><span class="note">/ 100</span>
+        <span class="verdict" id="verdict"></span>
+      </div>
+      <div class="words" id="words"></div>
+      <div class="legend">
+        <span style="--c:var(--ok)">bien reconnu</span>
+        <span style="--c:var(--mid)">hésitant ou presque</span>
+        <span style="--c:var(--bad)">autre mot entendu</span>
+        <span style="--c:var(--gone)">pas entendu</span>
+      </div>
+      <p class="heard" id="heard"></p>
+      <div class="row">
+        <button id="playMe">Me réécouter</button>
+        <button id="playBoth">Modèle puis moi</button>
+      </div>
+      <div>
+        <span class="label">Tes derniers essais sur cette phrase</span>
+        <div class="hist" id="hist"></div>
+      </div>
+    </div>
+  </section>
+
+  <details id="refBox">
+    <summary>Enregistrer la voix de référence (maman)</summary>
+    <div>
+      <p class="note">Fais dire la phrase affichée à la personne qui sert de modèle. L'enregistrement reste sur cet appareil. Le coach indique aussi s'il comprend bien cette voix, pour savoir quelle note viser.</p>
+      <div class="row">
+        <button id="recRef">Enregistrer la référence</button>
+        <label class="note">ou importer un fichier : <input type="file" id="refFile" accept="audio/*"></label>
+      </div>
+      <button id="delRef" hidden>Supprimer cette référence</button>
+      <p class="note" id="refScore"></p>
+    </div>
+  </details>
+
+  <details id="addBox">
+    <summary>Ajouter une phrase</summary>
+    <form id="addForm"><div>
+      <div class="field"><label for="newBr">En breton</label><input id="newBr" required lang="br" autocomplete="off"></div>
+      <div class="field"><label for="newFr">Traduction</label><input id="newFr" autocomplete="off"></div>
+      <p class="note" id="newCheck"></p>
+      <div class="row"><button class="primary" type="submit">Ajouter</button><button type="button" id="delPhrase">Retirer la phrase affichée</button></div>
+    </div></form>
+  </details>
+
+  <p class="err" id="err" hidden></p>
+
+  <footer>
+    <span>La note mesure si la machine reconnaît les mots attendus. Elle ne juge pas l'accent : un mot « bien reconnu » peut encore sonner étranger, et un parler local juste peut être mal compris. Ta mère reste la meilleure juge.</span>
+    <span>Reconnaissance vocale : modèle <code>vosk-model-br-26.01</code> d'<a href="https://github.com/gweltou/anaouder-cli" target="_blank" rel="noopener">Anaouder</a> (Gweltaz Duval-Guennoc), exécuté dans le navigateur avec <a href="https://www.npmjs.com/package/vosk-browser" target="_blank" rel="noopener">vosk-browser</a>. Rien n'est envoyé sur internet.</span>
+  </footer>
+</div>
+
+<script src="vosk.js"></script>
+<script>
+"use strict";
+const $ = id => document.getElementById(id);
+const CONF_OK = 0.75, NEAR = 0.6;
+const POINTS = {ok:1, fragile:0.7, proche:0.4, rate:0, manque:0};
+
+/* ---------- stockage local (tout est optionnel) ---------- */
+const ls = {
+  get(k, d){ try{ const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; }catch{ return d; } },
+  set(k, v){ try{ localStorage.setItem(k, JSON.stringify(v)); }catch{} }
+};
+let idb = null;
+function openDb(){
+  return new Promise(res => {
+    try{
+      const r = indexedDB.open("distagan", 1);
+      r.onupgradeneeded = () => r.result.createObjectStore("refs");
+      r.onsuccess = () => res(r.result);
+      r.onerror = () => res(null);
+    }catch{ res(null); }
+  });
+}
+function dbOp(mode, fn){
+  return new Promise(res => {
+    if(!idb) return res(null);
+    try{
+      const tx = idb.transaction("refs", mode), st = tx.objectStore("refs");
+      const r = fn(st); r.onsuccess = () => res(r.result); r.onerror = () => res(null);
+    }catch{ res(null); }
+  });
+}
+const getRef = id => dbOp("readonly", s => s.get(id));
+const putRef = (id, v) => dbOp("readwrite", s => s.put(v, id));
+const delRefDb = id => dbOp("readwrite", s => s.delete(id));
+
+/* ---------- texte ---------- */
+function normalize(t){
+  t = t.normalize("NFC").toLowerCase().replace(/[’‘ʼ`´]/g, "'").replace(/-/g, " ").replace(/[^\p{L}\p{N}' ]/gu, " ");
+  return t.split(/\s+/).map(w => w.replace(/^'+|'+$/g, "")).filter(Boolean);
+}
+function displayTokens(t){
+  const out = [];
+  for(const chunk of t.normalize("NFC").trim().split(/\s+/)){
+    const parts = chunk.split("-");
+    parts.forEach((p, i) => {
+      if(normalize(p).length) out.push(p + (i < parts.length - 1 ? "-" : ""));
+      else if(out.length) out[out.length - 1] += p;
+    });
+  }
+  return out;
+}
+function lev(a, b){
+  const m = a.length, n = b.length; let prev = Array.from({length:n+1}, (_, j) => j);
+  for(let i = 1; i <= m; i++){
+    const cur = [i];
+    for(let j = 1; j <= n; j++) cur[j] = Math.min(prev[j] + 1, cur[j-1] + 1, prev[j-1] + (a[i-1] === b[j-1] ? 0 : 1));
+    prev = cur;
+  }
+  return prev[n];
+}
+const sim = (a, b) => 1 - lev(a, b) / Math.max(a.length, b.length, 1);
+
+function align(target, heard){
+  const n = target.length, m = heard.length, d = [], bt = [];
+  for(let i = 0; i <= n; i++){ d.push(new Array(m+1).fill(Infinity)); bt.push(new Array(m+1).fill(null)); }
+  d[0][0] = 0;
+  for(let i = 0; i <= n; i++) for(let j = 0; j <= m; j++){
+    if(i > 0 && d[i-1][j] + 1 < d[i][j]){ d[i][j] = d[i-1][j] + 1; bt[i][j] = "del"; }
+    if(j > 0 && d[i][j-1] + 1 < d[i][j]){ d[i][j] = d[i][j-1] + 1; bt[i][j] = "ins"; }
+    if(i > 0 && j > 0){
+      const c = target[i-1] === heard[j-1].word ? 0 : 1 - 0.5 * sim(target[i-1], heard[j-1].word);
+      if(d[i-1][j-1] + c < d[i][j]){ d[i][j] = d[i-1][j-1] + c; bt[i][j] = "sub"; }
+    }
+  }
+  const ops = []; let i = n, j = m;
+  while(i > 0 || j > 0){
+    const op = bt[i][j];
+    if(op === "sub"){ ops.push(["sub", i-1, j-1]); i--; j--; }
+    else if(op === "del"){ ops.push(["del", i-1, null]); i--; }
+    else { ops.push(["ins", null, j-1]); j--; }
+  }
+  return ops.reverse();
+}
+function scoreIt(text, heard){
+  let shown = displayTokens(text); const target = normalize(text);
+  if(shown.length !== target.length) shown = target.slice();
+  const words = target.map((t, k) => ({shown:shown[k], norm:t, status:"manque", heard:null, conf:null, known: !VOCAB || VOCAB.has(t)}));
+  const extra = [];
+  for(const [op, ti, hj] of align(target, heard)){
+    if(op === "ins"){ extra.push(heard[hj].word); continue; }
+    if(op === "del") continue;
+    const w = words[ti], h = heard[hj];
+    w.heard = h.word; w.conf = h.conf;
+    if(h.word === w.norm) w.status = h.conf >= CONF_OK ? "ok" : "fragile";
+    else w.status = sim(h.word, w.norm) >= NEAR ? "proche" : "rate";
+  }
+  const scored = words.filter(w => w.known);
+  let value = null;
+  if(scored.length){
+    const pts = scored.reduce((s, w) => s + POINTS[w.status], 0) - 0.25 * extra.length;
+    value = Math.max(0, Math.round(100 * pts / scored.length));
+  }
+  return {score:value, words, extra, heard: heard.map(h => h.word).join(" ")};
+}
+
+/* ---------- reconnaissance ---------- */
+let model = null, sentinel = null, VOCAB = null, busy = Promise.resolve();
+function setStatus(text, frac){
+  $("statusText").textContent = text;
+  if(frac == null){ $("statusBar").parentElement.hidden = true; }
+  else { $("statusBar").parentElement.hidden = false; $("statusBar").style.width = Math.round(frac * 100) + "%"; }
+}
+async function fetchWithProgress(url, onFrac){
+  const r = await fetch(url);
+  if(!r.ok) throw new Error("Téléchargement impossible (" + r.status + ")");
+  const total = +r.headers.get("Content-Length") || 88033041;
+  if(!r.body || !r.body.getReader) return await r.blob();
+  const reader = r.body.getReader(), parts = []; let got = 0;
+  for(;;){
+    const {done, value} = await reader.read();
+    if(done) break;
+    parts.push(value); got += value.length; onFrac(Math.min(1, got / total), got);
+  }
+  return new Blob(parts);
+}
+async function loadModel(){
+  try{
+    const blob = await fetchWithProgress("model.tar.gz", (f, got) =>
+      setStatus("Téléchargement du modèle breton : " + Math.round(got / 1e6) + " / 88 Mo", f * 0.85));
+    setStatus("Préparation du modèle…", 0.9);
+    const url = URL.createObjectURL(blob);
+    model = await Vosk.createModel(url, -1);
+    sentinel = new model.KaldiRecognizer(16000);
+    setStatus("Prêt. Écoute le modèle, puis touche le micro.", null);
+    $("mic").disabled = false; $("recRef").disabled = false;
+    fetch("vocab.txt").then(r => r.text()).then(t => { VOCAB = new Set(t.split("\n")); render(); }).catch(() => {});
+  }catch(e){
+    setStatus("Le modèle n'a pas pu se charger : " + e.message + ". Recharge la page en Wi-Fi.", null);
+  }
+}
+function transcribe(samples){
+  const job = busy.then(() => new Promise((resolve, reject) => {
+    const rec = new model.KaldiRecognizer(16000); rec.setWords(true);
+    const words = [];
+    rec.on("result", m => { for(const w of (m.result.result || [])) words.push({word:w.word, conf:w.conf}); });
+    rec.on("error", m => reject(new Error(m.error)));
+    const step = 16000;
+    for(let i = 0; i < samples.length; i += step) rec.acceptWaveformFloat(samples.subarray(i, i + step), 16000);
+    rec.acceptWaveformFloat(new Float32Array(4000), 16000);
+    rec.retrieveFinalResult();
+    // Le travailleur traite les messages dans l'ordre : la réponse du témoin arrive après le résultat final.
+    const onSentinel = () => { sentinel.removeEventListener("result", onSentinel); rec.remove(); resolve(words); };
+    sentinel.addEventListener("result", onSentinel);
+    sentinel.retrieveFinalResult();
+  }));
+  busy = job.catch(() => {});
+  return job;
+}
+async function decode(blob){
+  const ctx = new OfflineAudioContext(1, 1, 16000);
+  const ab = await ctx.decodeAudioData(await blob.arrayBuffer());
+  return ab.getChannelData(0);
+}
+
+/* ---------- enregistrement ---------- */
+let rec = null;
+const canMic = !!(navigator.mediaDevices && navigator.mediaDevices.getUserMedia && window.MediaRecorder);
+if(!canMic) $("fileFallback").hidden = false;
+async function startRecording(onDone, btn){
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:{channelCount:1, echoCancellation:true, noiseSuppression:true}});
+    const mr = new MediaRecorder(stream), chunks = [];
+    mr.ondataavailable = e => e.data.size && chunks.push(e.data);
+    mr.onstop = () => { stream.getTracks().forEach(t => t.stop()); onDone(new Blob(chunks, {type: mr.mimeType || "audio/webm"})); };
+    mr.start();
+    const timer = setTimeout(() => stopRecording(), 15000);
+    rec = {mr, btn, timer};
+    return true;
+  }catch(e){
+    showErr("Le micro est refusé ou absent. Autorise le micro pour cette page, ou envoie un fichier audio.");
+    $("fileFallback").hidden = false;
+    return false;
+  }
+}
+function stopRecording(){
+  if(!rec) return;
+  clearTimeout(rec.timer); rec.mr.state !== "inactive" && rec.mr.stop(); rec = null;
+}
+
+/* ---------- état et rendu ---------- */
+let base = [], phrases = [], idx = 0, rate = 1, myBlob = null, refUrl = null, myUrl = null;
+const audio = new Audio();
+function showErr(t){ $("err").textContent = t; $("err").hidden = !t; }
+function cur(){ return phrases[idx]; }
+function allPhrases(){
+  const extra = ls.get("distagan.phrases", []), removed = new Set(ls.get("distagan.removed", []));
+  return base.concat(extra).filter(p => !removed.has(p.id));
+}
+async function render(){
+  const p = cur(); if(!p) return;
+  $("br").textContent = p.br; $("fr").textContent = p.fr || "";
+  const sel = $("pick");
+  if(sel.options.length !== phrases.length){
+    sel.textContent = "";
+    phrases.forEach((q, k) => { const o = document.createElement("option"); o.value = k; o.textContent = q.br; sel.append(o); });
+  }
+  sel.value = idx;
+  ls.set("distagan.idx", p.id);
+  const r = await getRef(p.id);
+  if(refUrl){ URL.revokeObjectURL(refUrl); refUrl = null; }
+  if(r && r.blob){ refUrl = URL.createObjectURL(r.blob); $("refInfo").textContent = "Voix enregistrée sur cet appareil"; }
+  else if(p.ref){ refUrl = p.ref; $("refInfo").textContent = "Voix de référence fournie"; }
+  else { $("refInfo").textContent = "Pas encore de voix de référence pour cette phrase"; }
+  $("playRef").disabled = !refUrl;
+  $("delRef").hidden = !(r && r.blob);
+  $("refScore").textContent = r && r.score != null ? "Le coach comprend cette voix de référence à " + r.score + " / 100. Vise à peu près ce niveau." : "";
+  const unknown = VOCAB ? normalize(p.br).filter(w => !VOCAB.has(w)) : [];
+  $("micHint").textContent = unknown.length
+    ? "Le coach ne connaît pas « " + unknown.join(", ") + " » : ce mot ne compte pas dans la note."
+    : "Touche le micro, dis la phrase, touche à nouveau.";
+  $("result").hidden = true;
+  renderHist();
+}
+function renderHist(){
+  const h = ls.get("distagan.hist." + cur().id, []), box = $("hist"); box.textContent = "";
+  for(const s of h.slice(-20)){ const i = document.createElement("i"); i.style.height = Math.max(3, s * 0.36) + "px"; i.title = s + " / 100"; box.append(i); }
+}
+function verdict(s){
+  if(s == null) return "";
+  if(s >= 85) return "Très clair, mat-tre !";
+  if(s >= 60) return "Compréhensible, quelques mots à reprendre.";
+  if(s >= 30) return "Encore difficile à suivre. Réécoute et ralentis.";
+  return "Le coach n'a presque rien reconnu.";
+}
+function showResult(res){
+  $("result").hidden = false;
+  $("score").textContent = res.score == null ? "–" : res.score;
+  $("verdict").textContent = verdict(res.score);
+  const box = $("words"); box.textContent = "";
+  for(const w of res.words){
+    const s = document.createElement("span");
+    const st = w.known ? w.status : "inconnu";
+    s.className = "w " + st; s.textContent = w.shown;
+    const sm = document.createElement("small");
+    sm.textContent = st === "ok" ? "" : st === "fragile" ? "hésitant" : st === "manque" ? "pas entendu"
+      : st === "inconnu" ? "non noté" : "entendu : " + w.heard;
+    if(sm.textContent) s.append(sm);
+    box.append(s);
+  }
+  $("heard").textContent = "";
+  const b = document.createElement("b"); b.textContent = res.heard || "(rien)";
+  $("heard").append("Le coach a entendu : ", b);
+  if(res.extra.length) $("heard").append(" · en trop : " + res.extra.join(", "));
+}
+function play(url){ return new Promise(r => { audio.src = url; audio.playbackRate = rate; audio.onended = r; audio.onerror = r; audio.play().catch(r); }); }
+
+async function analyse(blob){
+  showErr("");
+  $("micHint").textContent = "Analyse…";
+  try{
+    const samples = await decode(blob);
+    const res = scoreIt(cur().br, await transcribe(samples));
+    showResult(res);
+    if(res.score != null){ const k = "distagan.hist." + cur().id, h = ls.get(k, []); h.push(res.score); ls.set(k, h.slice(-50)); renderHist(); }
+    $("micHint").textContent = "Touche le micro pour réessayer.";
+  }catch(e){ showErr("Analyse impossible : " + e.message); $("micHint").textContent = ""; }
+}
+async function analyseRef(blob){
+  const id = cur().id;
+  try{
+    const res = scoreIt(cur().br, await transcribe(await decode(blob)));
+    await putRef(id, {blob, score: res.score, date: Date.now()});
+  }catch(e){ await putRef(id, {blob, score: null, date: Date.now()}); }
+  render();
+}
+
+/* ---------- événements ---------- */
+$("prev").onclick = () => { idx = (idx - 1 + phrases.length) % phrases.length; render(); };
+$("next").onclick = () => { idx = (idx + 1) % phrases.length; render(); };
+$("pick").onchange = e => { idx = +e.target.value; render(); };
+document.querySelectorAll(".speed button").forEach(b => b.onclick = () => {
+  rate = +b.dataset.rate; document.querySelectorAll(".speed button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  audio.playbackRate = rate;
+});
+$("playRef").onclick = () => refUrl && play(refUrl);
+$("playMe").onclick = () => myUrl && play(myUrl);
+$("playBoth").onclick = async () => { if(refUrl) await play(refUrl); if(myUrl){ const r = rate; rate = 1; await play(myUrl); rate = r; } };
+$("mic").onclick = async () => {
+  if(rec){ stopRecording(); return; }
+  const ok = await startRecording(blob => {
+    $("mic").classList.remove("on"); $("mic").setAttribute("aria-label", "S'enregistrer");
+    if(myUrl) URL.revokeObjectURL(myUrl); myBlob = blob; myUrl = URL.createObjectURL(blob);
+    analyse(blob);
+  });
+  if(ok){ $("mic").classList.add("on"); $("mic").setAttribute("aria-label", "Arrêter"); $("micHint").textContent = "J'écoute… touche pour arrêter."; }
+};
+$("fileIn").onchange = e => { const f = e.target.files[0]; if(f){ if(myUrl) URL.revokeObjectURL(myUrl); myUrl = URL.createObjectURL(f); analyse(f); } e.target.value = ""; };
+$("recRef").onclick = async () => {
+  if(rec){ stopRecording(); return; }
+  const ok = await startRecording(blob => { $("recRef").textContent = "Enregistrer la référence"; $("refScore").textContent = "Analyse de la voix de référence…"; analyseRef(blob); });
+  if(ok) $("recRef").textContent = "Arrêter l'enregistrement";
+};
+$("refFile").onchange = e => { const f = e.target.files[0]; if(f){ $("refScore").textContent = "Analyse…"; analyseRef(f); } e.target.value = ""; };
+$("delRef").onclick = async () => { await delRefDb(cur().id); render(); };
+$("newBr").oninput = () => {
+  const u = VOCAB ? normalize($("newBr").value).filter(w => !VOCAB.has(w)) : [];
+  $("newCheck").textContent = u.length ? "Mots inconnus du coach (vérifie l'orthographe) : " + u.join(", ") : "";
+};
+$("addForm").onsubmit = e => {
+  e.preventDefault();
+  const br = $("newBr").value.trim(); if(!br) return;
+  const extra = ls.get("distagan.phrases", []);
+  const id = "u" + Date.now().toString(36);
+  extra.push({id, br, fr: $("newFr").value.trim()}); ls.set("distagan.phrases", extra);
+  phrases = allPhrases(); idx = phrases.findIndex(p => p.id === id);
+  $("newBr").value = ""; $("newFr").value = ""; $("newCheck").textContent = "";
+  $("pick").textContent = ""; render();
+};
+$("delPhrase").onclick = () => {
+  if(phrases.length < 2) return;
+  const id = cur().id, removed = ls.get("distagan.removed", []); removed.push(id); ls.set("distagan.removed", removed);
+  phrases = allPhrases(); idx = Math.min(idx, phrases.length - 1); $("pick").textContent = ""; render();
+};
+
+(async () => {
+  $("recRef").disabled = true;
+  idb = await openDb();
+  try{ base = await (await fetch("phrases.json")).json(); }catch{ base = [{id:"demat", br:"Demat, penaos emañ kont ?", fr:"Bonjour, comment ça va ?"}]; }
+  phrases = allPhrases();
+  const last = ls.get("distagan.idx", null); const k = phrases.findIndex(p => p.id === last); idx = k >= 0 ? k : 0;
+  render();
+  loadModel();
+})();
+</script>
+</body>
+</html>
