@@ -27,6 +27,7 @@
   --ok:#7fcf9c; --ok-bg:#1f3a2a; --mid:#e7bd62; --mid-bg:#3b3020; --bad:#f08a83; --bad-bg:#432523; --gone:#8e9ba2; --gone-bg:#262f35;
   color-scheme:dark}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%}
 body{margin:0;background:var(--bg);color:var(--fg);font:15px/1.5 var(--f-ui);
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
@@ -89,14 +90,53 @@ details>div{display:flex;flex-direction:column;gap:10px;margin-top:12px}
 .note{font-size:.82rem;color:var(--muted)}
 footer{font-size:.78rem;color:var(--muted);display:flex;flex-direction:column;gap:6px}
 footer a{color:var(--accent)}
+.stack{display:flex;flex-direction:column;gap:16px}
+body.mom{font-size:18px}
+.mom .br{font-size:clamp(1.8rem,7vw,2.4rem)}
+.mom .micbtn{width:120px;height:120px}
+.mom .micbtn svg{width:48px;height:48px}
+.mom button{min-height:52px;padding:10px 18px}
+.momintro{margin:0;font-size:1.05rem}
+.done{display:inline-flex;align-items:center;gap:6px;color:var(--ok);font-weight:600}
+.big{width:100%;font-size:1.1rem;min-height:60px}
+.grow{flex:1}
+.copy{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.copy code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;word-break:break-all}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
 <body>
 <div class="wrap">
   <header>
-    <h1>Distagañ<small>Coach de prononciation bretonne</small></h1>
+    <h1>Distagañ<small id="subtitle">Coach de prononciation bretonne</small></h1>
   </header>
+
+  <section id="mom" class="stack" hidden>
+    <p class="momintro">Demat ! Lisez chaque phrase à voix haute, naturellement, comme vous la diriez. Perig s'en servira comme modèle.</p>
+    <div class="card">
+      <span class="label" id="momCount"></span>
+      <p class="br" id="momBr" lang="br"></p>
+      <p class="fr" id="momFr"></p>
+      <div class="mic">
+        <button class="micbtn" id="momMic" aria-label="Enregistrer">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3" fill="currentColor"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+        </button>
+        <span class="hint" id="momHint"></span>
+        <span class="done" id="momOk" hidden>✓ Enregistrée</span>
+      </div>
+      <button id="momPlay" hidden>Réécouter mon enregistrement</button>
+      <div class="row">
+        <button id="momPrev" class="grow">‹ Précédente</button>
+        <button id="momNext" class="grow primary">Suivante ›</button>
+      </div>
+    </div>
+    <p class="note" id="momTally"></p>
+    <button id="momSend" class="primary big">Envoyer mes enregistrements à Perig</button>
+    <button id="momShareNow" class="primary big" hidden>Toucher ici pour choisir comment envoyer</button>
+    <p class="note" id="momSendInfo">Le téléphone vous proposera de choisir comment envoyer : courriel, WhatsApp, SMS…</p>
+  </section>
+
+  <div id="app" class="stack">
 
   <div class="status" id="status" role="status">
     <span id="statusText">Chargement du modèle de reconnaissance bretonne…</span>
@@ -171,6 +211,12 @@ footer a{color:var(--accent)}
       </div>
       <button id="delRef" hidden>Supprimer cette référence</button>
       <p class="note" id="refScore"></p>
+      <span class="label">Depuis chez elle</span>
+      <p class="note">Envoie-lui ce lien. Elle enregistre toutes les phrases sur son téléphone, puis touche « Envoyer mes enregistrements ». Elle n'a rien à télécharger.</p>
+      <div class="copy"><code id="momLink"></code><button id="copyLink">Copier</button></div>
+      <label class="note">Importer les fichiers reçus de maman :
+        <input type="file" id="refImport" accept="audio/*,.wav" multiple></label>
+      <p class="note" id="importInfo"></p>
     </div>
   </details>
 
@@ -184,12 +230,12 @@ footer a{color:var(--accent)}
     </div></form>
   </details>
 
-  <p class="err" id="err" hidden></p>
-
   <footer>
     <span>La note mesure si la machine reconnaît les mots attendus. Elle ne juge pas l'accent : un mot « bien reconnu » peut encore sonner étranger, et un parler local juste peut être mal compris. Ta mère reste la meilleure juge.</span>
     <span>Reconnaissance vocale : modèle <code>vosk-model-br-26.01</code> d'<a href="https://github.com/gweltou/anaouder-cli" target="_blank" rel="noopener">Anaouder</a> (Gweltaz Duval-Guennoc), exécuté dans le navigateur avec <a href="https://www.npmjs.com/package/vosk-browser" target="_blank" rel="noopener">vosk-browser</a>. Rien n'est envoyé sur internet.</span>
   </footer>
+  </div>
+  <p class="err" id="err" hidden></p>
 </div>
 
 <script src="vosk.js"></script>
@@ -517,11 +563,141 @@ $("delPhrase").onclick = () => {
   phrases = allPhrases(); idx = Math.min(idx, phrases.length - 1); $("pick").textContent = ""; render();
 };
 
+/* ---------- fichiers WAV échangés (l'identifiant de la phrase voyage dans le fichier) ---------- */
+async function toWav(blob, id){
+  const ab = await new OfflineAudioContext(1, 1, 24000).decodeAudioData(await blob.arrayBuffer());
+  const d = ab.getChannelData(0), sr = ab.sampleRate;
+  const name = new TextEncoder().encode("distagan:" + id + "\0");
+  const nameLen = name.length + (name.length % 2);
+  const listLen = 4 + 8 + nameLen;
+  const dataLen = d.length * 2;
+  const buf = new ArrayBuffer(12 + 24 + 8 + listLen + 8 + dataLen), v = new DataView(buf);
+  let o = 0;
+  const str = s => { for(const c of s) v.setUint8(o++, c.charCodeAt(0)); };
+  const u32 = x => { v.setUint32(o, x, true); o += 4; }, u16 = x => { v.setUint16(o, x, true); o += 2; };
+  str("RIFF"); u32(buf.byteLength - 8); str("WAVE");
+  str("fmt "); u32(16); u16(1); u16(1); u32(sr); u32(sr * 2); u16(2); u16(16);
+  str("LIST"); u32(listLen); str("INFO"); str("INAM"); u32(nameLen);
+  new Uint8Array(buf, o, name.length).set(name); o += nameLen;
+  str("data"); u32(dataLen);
+  for(let i = 0; i < d.length; i++, o += 2) v.setInt16(o, Math.max(-1, Math.min(1, d[i])) * 0x7fff, true);
+  return new Blob([buf], {type: "audio/wav"});
+}
+async function idFromFile(file){
+  try{
+    const b = new Uint8Array(await file.slice(0, 4096).arrayBuffer());
+    const t = new TextDecoder("latin1").decode(b);
+    const m = t.match(/distagan:([^\0]+)\0/);
+    if(m) return decodeURIComponent(escape(m[1]));
+  }catch{}
+  const n = file.name.match(/distagan-(.+?)\.[a-z0-9]+$/i);
+  return n ? n[1] : null;
+}
+
+/* ---------- mode maman ---------- */
+let momFiles = null;
+async function renderMom(){
+  const p = cur();
+  $("momCount").textContent = "Phrase " + (idx + 1) + " sur " + phrases.length;
+  $("momBr").textContent = p.br; $("momFr").textContent = p.fr || "";
+  const r = await getRef(p.id);
+  if(refUrl){ URL.revokeObjectURL(refUrl); refUrl = null; }
+  if(r && r.blob) refUrl = URL.createObjectURL(r.blob);
+  $("momOk").hidden = !refUrl; $("momPlay").hidden = !refUrl;
+  $("momHint").textContent = refUrl ? "Pour recommencer, touchez à nouveau le rond." : "Touchez le rond, lisez la phrase, puis touchez-le encore.";
+  $("momNext").textContent = idx === phrases.length - 1 ? "Terminé" : "Suivante ›";
+  let n = 0; for(const q of phrases) if(await getRef(q.id)) n++;
+  $("momTally").textContent = "Déjà enregistrées : " + n + " sur " + phrases.length + ". Vous pouvez envoyer à tout moment, même si tout n'est pas fini.";
+}
+async function momShare(files){
+  try{
+    await navigator.share({files, title: "Enregistrements Distagañ", text: "Mes enregistrements pour Distagañ"});
+    $("momSendInfo").textContent = "Envoyé. Trugarez !"; $("momShareNow").hidden = true;
+  }catch(e){
+    if(e.name === "AbortError"){ $("momSendInfo").textContent = "Envoi annulé. Vous pouvez réessayer."; return; }
+    momFiles = files; $("momShareNow").hidden = false;
+    $("momSendInfo").textContent = "Les fichiers sont prêts.";
+  }
+}
+async function momSend(){
+  $("momSendInfo").textContent = "Préparation des fichiers…";
+  const files = [];
+  for(const p of phrases){
+    const r = await getRef(p.id);
+    if(r && r.blob) files.push(new File([await toWav(r.blob, p.id)], "distagan-" + p.id + ".wav", {type: "audio/wav"}));
+  }
+  if(!files.length){ $("momSendInfo").textContent = "Aucune phrase enregistrée pour l'instant."; return; }
+  if(navigator.canShare && navigator.canShare({files})) return momShare(files);
+  // Ordinateur sans partage : on télécharge les fichiers, à joindre ensuite à un courriel.
+  for(const f of files){
+    const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name;
+    document.body.append(a); a.click(); a.remove();
+    await new Promise(r => setTimeout(r, 300));
+  }
+  $("momSendInfo").textContent = files.length + " fichiers enregistrés dans vos Téléchargements. Joignez-les à un courriel pour Perig.";
+}
+function startMom(){
+  document.body.classList.add("mom");
+  $("app").hidden = true; $("status").hidden = true; $("mom").hidden = false;
+  $("subtitle").textContent = "Enregistrer les phrases modèles";
+  $("momMic").onclick = async () => {
+    if(rec){ stopRecording(); return; }
+    const id = cur().id;
+    const ok = await startRecording(async blob => {
+      $("momMic").classList.remove("on"); $("momMic").setAttribute("aria-label", "Enregistrer");
+      await putRef(id, {blob, score: null, date: Date.now()});
+      renderMom();
+    });
+    if(ok){ $("momMic").classList.add("on"); $("momMic").setAttribute("aria-label", "Arrêter"); $("momHint").textContent = "J'enregistre… touchez le rond quand vous avez fini."; $("momOk").hidden = true; }
+  };
+  $("momPlay").onclick = () => { rate = 1; refUrl && play(refUrl); };
+  $("momPrev").onclick = () => { if(rec) return; idx = Math.max(0, idx - 1); renderMom(); };
+  $("momNext").onclick = () => {
+    if(rec) return;
+    if(idx === phrases.length - 1){ $("momSend").scrollIntoView({behavior: "smooth", block: "center"}); return; }
+    idx++; renderMom();
+  };
+  $("momSend").onclick = momSend;
+  $("momShareNow").onclick = () => momFiles && momShare(momFiles);
+  idx = 0; renderMom();
+}
+
+/* ---------- côté Perig : lien et import ---------- */
+const momUrl = location.href.split("#")[0] + "#maman";
+$("momLink").textContent = momUrl;
+$("copyLink").onclick = () => {
+  navigator.clipboard.writeText(momUrl).then(() => $("copyLink").textContent = "Copié", () => {
+    const r = document.createRange(); r.selectNodeContents($("momLink")); const s = getSelection(); s.removeAllRanges(); s.addRange(r);
+  });
+};
+$("refImport").onchange = async e => {
+  const files = [...e.target.files]; e.target.value = "";
+  const ids = new Set(phrases.map(p => p.id));
+  let ok = 0; const unknown = [];
+  for(const f of files){
+    const id = await idFromFile(f);
+    if(id && ids.has(id)){ await putRef(id, {blob: f, score: null, date: Date.now()}); ok++; }
+    else unknown.push(f.name);
+  }
+  $("importInfo").textContent = ok + " enregistrement" + (ok > 1 ? "s" : "") + " importé" + (ok > 1 ? "s" : "") + "."
+    + (unknown.length ? " Non reconnus : " + unknown.join(", ") + " (tu peux les importer un par un avec le bouton au-dessus, sur la bonne phrase)." : "");
+  render();
+  // Note du coach sur chaque voix importée, en arrière-plan une fois le modèle prêt.
+  for(const p of phrases){
+    const r = await getRef(p.id);
+    if(!r || r.score != null || !model) continue;
+    try{ const res = scoreIt(p.br, await transcribe(await decode(r.blob))); await putRef(p.id, {...r, score: res.score}); }catch{}
+  }
+  render();
+};
+
+window.addEventListener("hashchange", () => location.reload());
 (async () => {
   $("recRef").disabled = true;
   idb = await openDb();
   try{ base = await (await fetch("phrases.json")).json(); }catch{ base = [{id:"demat", br:"Demat, penaos emañ kont ?", fr:"Bonjour, comment ça va ?"}]; }
   phrases = allPhrases();
+  if(location.hash === "#maman"){ phrases = base.slice(); startMom(); return; }
   const last = ls.get("distagan.idx", null); const k = phrases.findIndex(p => p.id === last); idx = k >= 0 ? k : 0;
   render();
   loadModel();
