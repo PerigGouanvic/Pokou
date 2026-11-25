@@ -102,6 +102,7 @@ body.mom{font-size:18px}
 .grow{flex:1}
 .copy{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .copy code{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:4px 8px;word-break:break-all}
+.extlink{color:var(--accent);font-weight:500}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
 </style>
 </head>
@@ -164,6 +165,10 @@ body.mom{font-size:18px}
           <button data-rate="0.6" aria-pressed="false">0,6×</button>
         </div>
         <span class="note" id="refInfo"></span>
+      </div>
+      <div class="row" id="noRef" hidden>
+        <button id="addRef" class="primary">Ajouter une voix modèle</button>
+        <a class="extlink" id="sintezenn" href="https://niverel.brezhoneg.bzh/fr/sintezenn/" target="_blank" rel="noopener">Entendre avec Sintezenn ↗</a>
       </div>
     </div>
 
@@ -451,8 +456,8 @@ async function render(){
   if(refUrl){ URL.revokeObjectURL(refUrl); refUrl = null; }
   if(r && r.blob){ refUrl = URL.createObjectURL(r.blob); $("refInfo").textContent = "Voix enregistrée sur cet appareil"; }
   else if(p.ref){ refUrl = p.ref; $("refInfo").textContent = "Voix de référence fournie"; }
-  else { $("refInfo").textContent = "Pas encore de voix de référence pour cette phrase"; }
-  $("playRef").disabled = !refUrl;
+  else { $("refInfo").textContent = "Pas encore de voix modèle pour cette phrase. Fais-la enregistrer par ta mère, ou écoute la voix de synthèse Sintezenn : la phrase sera copiée, il suffira de la coller."; }
+  $("playRef").hidden = !refUrl; document.querySelector(".speed").hidden = !refUrl; $("noRef").hidden = !!refUrl;
   $("delRef").hidden = !(r && r.blob);
   $("refScore").textContent = r && r.score != null ? "Le coach comprend cette voix de référence à " + r.score + " / 100. Vise à peu près ce niveau." : "";
   const unknown = VOCAB ? normalize(p.br).filter(w => !VOCAB.has(w)) : [];
@@ -523,6 +528,8 @@ document.querySelectorAll(".speed button").forEach(b => b.onclick = () => {
   rate = +b.dataset.rate; document.querySelectorAll(".speed button").forEach(x => x.setAttribute("aria-pressed", x === b));
   audio.playbackRate = rate;
 });
+$("addRef").onclick = () => { $("refBox").open = true; $("refBox").scrollIntoView({behavior: "smooth", block: "start"}); };
+$("sintezenn").onclick = () => { try{ navigator.clipboard.writeText(cur().br).catch(() => {}); }catch{} };
 $("playRef").onclick = () => refUrl && play(refUrl);
 $("playMe").onclick = () => myUrl && play(myUrl);
 $("playBoth").onclick = async () => { if(refUrl) await play(refUrl); if(myUrl){ const r = rate; rate = 1; await play(myUrl); rate = r; } };
