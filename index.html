@@ -192,6 +192,7 @@ body.mom{font-size:18px}
     </details>
     <button id="momSend" class="primary big">Envoyer mes enregistrements à Perig</button>
     <button id="momShareNow" class="primary big" hidden>Toucher ici pour choisir comment envoyer</button>
+    <button id="momSave" hidden>Ça ne marche pas ? Enregistrer les fichiers sur le téléphone</button>
     <p class="note" id="momSendInfo">Le téléphone vous proposera de choisir comment envoyer : courriel, WhatsApp, SMS…</p>
   </section>
 
@@ -1073,15 +1074,49 @@ async function renderMom(){
   const n = phrases.filter(q => voicesOf(q.id).has(VOICE)).length;
   $("momTally").textContent = "Déjà enregistrées : " + n + " sur " + phrases.length + ". Vous pouvez envoyer à tout moment, même si tout n'est pas fini.";
 }
-async function momShare(files){
-  try{
-    await navigator.share({files, title: "Enregistrements Pokou", text: "Mes enregistrements pour Pokou"});
-    $("momSendInfo").textContent = "Envoyé. Trugarez !"; $("momShareNow").hidden = true;
-  }catch(e){
-    if(e.name === "AbortError"){ $("momSendInfo").textContent = "Envoi annulé. Vous pouvez réessayer."; return; }
-    momFiles = files; $("momShareNow").hidden = false;
-    $("momSendInfo").textContent = "Les fichiers sont prêts.";
+/* Chrome (Android comme ordinateur) refuse de partager plus de 10 fichiers d'un coup : on envoie par paquets,
+   un toucher par paquet (le partage exige un geste récent de la personne). */
+const SHARE_MAX = 10;
+let momBatch = 0;
+const momBatches = () => { const b = []; for(let i = 0; i < momFiles.length; i += SHARE_MAX) b.push(momFiles.slice(i, i + SHARE_MAX)); return b; };
+function momNextStep(){
+  const b = momBatches(), btn = $("momShareNow");
+  if(momBatch >= b.length){
+    btn.hidden = true; $("momSave").hidden = true;
+    $("momSendInfo").textContent = "Tout est envoyé. Trugarez !"; return;
   }
+  btn.hidden = false;
+  btn.textContent = b.length > 1 ? "Envoyer le paquet " + (momBatch + 1) + " sur " + b.length : "Toucher ici pour choisir comment envoyer";
+}
+async function momShare(){
+  const b = momBatches(), files = b[momBatch];
+  try{
+    await navigator.share({files, title: "Enregistrements Pokou", text: "Mes enregistrements pour Pokou" + (b.length > 1 ? " (" + (momBatch + 1) + "/" + b.length + ")" : "")});
+    momBatch++;
+    $("momSendInfo").textContent = momBatch < b.length
+      ? "Paquet " + momBatch + " envoyé. Touchez le bouton pour envoyer le suivant, de la même façon."
+      : "";
+    momNextStep();
+  }catch(e){
+    if(e.name === "AbortError"){ $("momSendInfo").textContent = "Envoi annulé. Vous pouvez réessayer."; momNextStep(); return; }
+    momFails++;
+    $("momSendInfo").textContent = b.length > 1
+      ? "Vos " + momFiles.length + " enregistrements sont prêts. Le téléphone les envoie en " + b.length + " fois : touchez le bouton pour chaque paquet."
+      : "Les fichiers sont prêts.";
+    momNextStep();
+    if(momFails > 1) $("momSave").hidden = false;
+  }
+}
+let momFails = 0;
+function momDownload(files){
+  return (async () => {
+    for(const f of files){
+      const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name;
+      document.body.append(a); a.click(); a.remove();
+      await new Promise(r => setTimeout(r, 300));
+    }
+    $("momSendInfo").textContent = files.length + " fichiers enregistrés dans vos Téléchargements. Joignez-les à un courriel pour Perig.";
+  })();
 }
 async function momSend(){
   $("momSendInfo").textContent = "Préparation des fichiers…";
@@ -1095,14 +1130,10 @@ async function momSend(){
     }
   }
   if(!files.length){ $("momSendInfo").textContent = "Aucune phrase enregistrée pour l'instant."; return; }
-  if(navigator.canShare && navigator.canShare({files})) return momShare(files);
+  momFiles = files; momBatch = 0; momFails = 0;
+  if(navigator.canShare && navigator.canShare({files: files.slice(0, SHARE_MAX)})) return momShare();
   // Ordinateur sans partage : on télécharge les fichiers, à joindre ensuite à un courriel.
-  for(const f of files){
-    const a = document.createElement("a"); a.href = URL.createObjectURL(f); a.download = f.name;
-    document.body.append(a); a.click(); a.remove();
-    await new Promise(r => setTimeout(r, 300));
-  }
-  $("momSendInfo").textContent = files.length + " fichiers enregistrés dans vos Téléchargements. Joignez-les à un courriel pour Perig.";
+  return momDownload(files);
 }
 function startMom(){
   document.body.classList.add("mom");
@@ -1138,7 +1169,8 @@ function startMom(){
     renderMom(); $("momMic").scrollIntoView({behavior: "smooth", block: "center"});
   };
   $("momSend").onclick = momSend;
-  $("momShareNow").onclick = () => momFiles && momShare(momFiles);
+  $("momShareNow").onclick = () => momFiles && momShare();
+  $("momSave").onclick = () => momFiles && momDownload(momFiles);
   idx = 0; renderMom();
 }
 
