@@ -176,6 +176,7 @@ body.mom{font-size:18px}
         <span class="done" id="momOk" hidden>✓ Enregistrée</span>
       </div>
       <button id="momPlay" hidden>Réécouter mon enregistrement</button>
+      <button id="momUndo" hidden>Revenir à l'enregistrement d'avant</button>
       <div class="row">
         <button id="momPrev" class="grow">‹ Précédente</button>
         <button id="momNext" class="grow primary">Suivante ›</button>
@@ -370,7 +371,7 @@ function dbOp(mode, fn){
   });
 }
 /* Voix modèles : plusieurs voix par phrase. Clé « id » pour Maman (format historique), « id|Nom » sinon. */
-const DEFAULT_VOICE = "Maman", PAPA = "Papa";
+const DEFAULT_VOICE = "Maman", PAPA = "Papa", PREV = "avant:";
 let REFS = new Map();
 const refKey = (id, voice) => voice === DEFAULT_VOICE ? id : id + "|" + voice;
 function loadRefs(){
@@ -383,6 +384,7 @@ function loadRefs(){
         const c = req.result;
         if(!c){ REFS = next; return res(); }
         const k = String(c.key), i = k.indexOf("|");
+        if(k.startsWith(PREV)){ c.continue(); return; }
         const id = i < 0 ? k : k.slice(0, i);
         const voice = (c.value && c.value.voice) || (i < 0 ? DEFAULT_VOICE : k.slice(i + 1));
         if(!next.has(id)) next.set(id, new Map());
@@ -1069,6 +1071,8 @@ async function renderMom(){
   if(refUrl){ URL.revokeObjectURL(refUrl); refUrl = null; }
   if(r && r.blob) refUrl = URL.createObjectURL(r.blob);
   $("momOk").hidden = !refUrl; $("momPlay").hidden = !refUrl;
+  const prev = await dbOp("readonly", s => s.get(PREV + refKey(p.id, VOICE)));
+  $("momUndo").hidden = !(prev && prev.blob);
   $("momHint").textContent = refUrl ? "Pour recommencer, touchez à nouveau le rond." : "Touchez le rond, lisez la phrase, puis touchez-le encore.";
   $("momNext").textContent = idx === phrases.length - 1 ? "Terminé" : "Suivante ›";
   const n = phrases.filter(q => voicesOf(q.id).has(VOICE)).length;
@@ -1145,6 +1149,9 @@ function startMom(){
     const ok = await startRecording(async blob => {
       $("momMic").classList.remove("on"); $("momMic").setAttribute("aria-label", "Enregistrer");
       const from = ls.get(recKey("from"), "");
+      // L'essai précédent est mis de côté (un seul), pour pouvoir y revenir.
+      const old = voicesOf(id).get(VOICE);
+      if(old && old.blob) await dbOp("readwrite", s => s.put(old, PREV + refKey(id, VOICE)));
       await putVoice(id, VOICE, {blob, score: null, date: Date.now(), ...(from ? {from} : {})});
       renderMom();
     });
@@ -1153,6 +1160,18 @@ function startMom(){
   $("momFrom").value = ls.get(recKey("from"), "");
   $("momFrom").oninput = () => ls.set(recKey("from"), $("momFrom").value.trim());
   $("momPlay").onclick = () => { rate = 1; refUrl && play(refUrl); };
+  $("momUndo").onclick = async () => {
+    if(rec) return;
+    const id = cur().id, k = PREV + refKey(id, VOICE);
+    const prev = await dbOp("readonly", s => s.get(k)), now = voicesOf(id).get(VOICE);
+    if(!prev || !prev.blob) return;
+    // On échange : l'enregistrement actuel devient « celui d'avant », rien n'est perdu.
+    if(now && now.blob) await dbOp("readwrite", s => s.put(now, k));
+    await putVoice(id, VOICE, prev);
+    await renderMom();
+    $("momHint").textContent = "C'est l'enregistrement d'avant qui est gardé. Touchez encore le bouton pour reprendre l'autre.";
+    rate = 1; refUrl && play(refUrl);
+  };
   $("momPrev").onclick = () => { if(rec) return; idx = Math.max(0, idx - 1); renderMom(); };
   $("momNext").onclick = () => {
     if(rec) return;
