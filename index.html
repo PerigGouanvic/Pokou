@@ -162,6 +162,8 @@ body.mom{font-size:18px}
 
   <section id="mom" class="stack" hidden>
     <p class="momintro">Demat ! Lisez chaque phrase à voix haute, naturellement, comme vous la diriez. Perig s'en servira comme modèle.</p>
+    <p class="note">Chacun a sa façon de parler, et c'est justement ce qui nous intéresse. Si une phrase ne vous dit rien, ou que chez vous on la dit autrement, passez-la : vous pourrez ajouter votre façon de dire plus bas.</p>
+    <div class="field"><label for="momFrom">D'où vient votre breton ? (commune ou pays, si vous le souhaitez)</label><input id="momFrom" autocomplete="off" maxlength="40"></div>
     <div class="card">
       <span class="label" id="momCount"></span>
       <p class="br" id="momBr" lang="br"></p>
@@ -306,6 +308,7 @@ body.mom{font-size:18px}
       <span class="label">À distance</span>
       <p class="note">Écris le nom de la personne et envoie-lui le lien. Elle enregistre les phrases sur son téléphone, peut ajouter ses propres mots, puis touche « Envoyer mes enregistrements ». Elle n'a rien à télécharger.</p>
       <div class="field"><label for="inviteName">Nom de la personne</label><input id="inviteName" value="Maman" autocomplete="off" maxlength="24"></div>
+      <div class="field"><label for="inviteFrom">Son coin, son parler (facultatif, elle pourra le corriger)</label><input id="inviteFrom" autocomplete="off" maxlength="40"></div>
       <div class="copy"><code id="momLink"></code><button id="copyLink">Copier</button></div>
       <label class="note">Importer les fichiers reçus :
         <input type="file" id="refImport" accept="audio/*,.wav" multiple></label>
@@ -366,7 +369,7 @@ function dbOp(mode, fn){
   });
 }
 /* Voix modèles : plusieurs voix par phrase. Clé « id » pour Maman (format historique), « id|Nom » sinon. */
-const DEFAULT_VOICE = "Maman";
+const DEFAULT_VOICE = "Maman", PAPA = "Papa";
 let REFS = new Map();
 const refKey = (id, voice) => voice === DEFAULT_VOICE ? id : id + "|" + voice;
 function loadRefs(){
@@ -619,7 +622,7 @@ function renderVoices(p){
   if(m.size < 2) return;
   const sel = pickVoice(p.id);
   for(const v of m.keys()){
-    const b = document.createElement("button"); b.className = "chip"; b.textContent = v; b.setAttribute("aria-pressed", v === sel);
+    const b = document.createElement("button"); b.className = "chip"; b.textContent = v; const fr = m.get(v).from; if(fr) b.title = fr; b.setAttribute("aria-pressed", v === sel);
     b.onclick = () => { ls.set("pokou.voice", v); render(); };
     box.append(b);
   }
@@ -637,7 +640,7 @@ async function render(){
   if(refUrl && refUrl.startsWith("blob:")) URL.revokeObjectURL(refUrl);
   refUrl = voiceUrl(p.id);
   const v = pickVoice(p.id), r = v ? voicesOf(p.id).get(v) : null;
-  if(refUrl){ $("refInfo").textContent = "Voix : " + v; }
+  if(refUrl){ $("refInfo").textContent = "Voix : " + v + (r && r.from ? " (" + r.from + ")" : ""); }
   else if(p.ref){ refUrl = p.ref; $("refInfo").textContent = "Voix de référence fournie"; }
   else { $("refInfo").textContent = "Pas encore de voix modèle pour cette phrase. Fais-la enregistrer par un proche bretonnant, ou écoute la voix de synthèse Sintezenn : la phrase sera copiée, il suffira de la coller."; }
   renderVoices(p);
@@ -1054,7 +1057,8 @@ const safeName = s => s.normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^A-Z
 
 /* ---------- mode enregistrement (maman ou un autre proche) ---------- */
 let momFiles = null, VOICE = DEFAULT_VOICE;
-const momPhrases = () => ls.get("pokou.rec.phrases", []);
+const recKey = k => "pokou.rec." + k + (VOICE === DEFAULT_VOICE ? "" : "|" + VOICE);
+const momPhrases = () => ls.get(recKey("phrases"), []);
 function recPhrases(){ return base.concat(momPhrases()); }
 async function renderMom(){
   const p = cur();
@@ -1086,6 +1090,7 @@ async function momSend(){
     const r = voicesOf(p.id).get(VOICE);
     if(r && r.blob){
       const meta = {id: p.id, br: p.br, fr: p.fr || "", voice: VOICE};
+      const from = ls.get(recKey("from"), ""); if(from) meta.from = from;
       files.push(new File([await toWav(r.blob, meta)], "pokou-" + safeName(VOICE) + "-" + p.id + ".wav", {type: "audio/wav"}));
     }
   }
@@ -1108,11 +1113,14 @@ function startMom(){
     const id = cur().id;
     const ok = await startRecording(async blob => {
       $("momMic").classList.remove("on"); $("momMic").setAttribute("aria-label", "Enregistrer");
-      await putVoice(id, VOICE, {blob, score: null, date: Date.now()});
+      const from = ls.get(recKey("from"), "");
+      await putVoice(id, VOICE, {blob, score: null, date: Date.now(), ...(from ? {from} : {})});
       renderMom();
     });
     if(ok){ $("momMic").classList.add("on"); $("momMic").setAttribute("aria-label", "Arrêter"); $("momHint").textContent = "J'enregistre… touchez le rond quand vous avez fini."; $("momOk").hidden = true; }
   };
+  $("momFrom").value = ls.get(recKey("from"), "");
+  $("momFrom").oninput = () => ls.set(recKey("from"), $("momFrom").value.trim());
   $("momPlay").onclick = () => { rate = 1; refUrl && play(refUrl); };
   $("momPrev").onclick = () => { if(rec) return; idx = Math.max(0, idx - 1); renderMom(); };
   $("momNext").onclick = () => {
@@ -1124,7 +1132,7 @@ function startMom(){
     e.preventDefault();
     const br = $("momNewBr").value.trim(); if(!br) return;
     const list = momPhrases(), id = "m" + Date.now().toString(36);
-    list.push({id, br, fr: $("momNewFr").value.trim(), mine: true}); ls.set("pokou.rec.phrases", list);
+    list.push({id, br, fr: $("momNewFr").value.trim(), mine: true}); ls.set(recKey("phrases"), list);
     phrases = recPhrases(); idx = phrases.length - 1;
     $("momNewBr").value = ""; $("momNewFr").value = ""; $("momAddBox").open = false;
     renderMom(); $("momMic").scrollIntoView({behavior: "smooth", block: "center"});
@@ -1136,11 +1144,12 @@ function startMom(){
 
 /* ---------- côté apprenant : lien d'invitation et import ---------- */
 function inviteUrl(){
-  const n = $("inviteName").value.trim() || DEFAULT_VOICE;
-  return location.href.split("#")[0] + (n === DEFAULT_VOICE ? "#maman" : "#voix=" + encodeURIComponent(n));
+  const n = $("inviteName").value.trim() || DEFAULT_VOICE, f = $("inviteFrom").value.trim();
+  const head = n === DEFAULT_VOICE ? "maman" : n === PAPA ? "papa" : "voix=" + encodeURIComponent(n);
+  return location.href.split("#")[0] + "#" + head + (f ? "&coin=" + encodeURIComponent(f) : "");
 }
 const updateLink = () => { $("momLink").textContent = inviteUrl(); $("copyLink").textContent = "Copier"; };
-$("inviteName").oninput = updateLink; updateLink();
+$("inviteName").oninput = $("inviteFrom").oninput = updateLink; updateLink();
 $("copyLink").onclick = () => {
   const u = inviteUrl();
   navigator.clipboard.writeText(u).then(() => $("copyLink").textContent = "Copié", () => {
@@ -1160,7 +1169,7 @@ $("refImport").onchange = async e => {
       phrases = allPhrases();
     }
     const voice = meta.voice || DEFAULT_VOICE; voices.add(voice);
-    await putVoice(meta.id, voice, {blob: f, score: null, date: Date.now()});
+    await putVoice(meta.id, voice, {blob: f, score: null, date: Date.now(), ...(meta.from ? {from: String(meta.from).slice(0, 40)} : {})});
     ok++;
   }
   $("importInfo").textContent = ok + " enregistrement" + (ok > 1 ? "s" : "") + " importé" + (ok > 1 ? "s" : "")
@@ -1186,9 +1195,11 @@ window.addEventListener("hashchange", () => location.reload());
   idb = await openDb();
   await loadRefs();
   try{ base = await (await fetch("phrases.json")).json(); }catch{ base = [{id:"demat", br:"Demat, penaos emañ kont ?", fr:"Bonjour, comment ça va ?"}]; }
-  const h = location.hash;
-  if(h === "#maman" || h.startsWith("#voix=")){
-    VOICE = h === "#maman" ? DEFAULT_VOICE : (decodeURIComponent(h.slice(6)).trim().slice(0, 24) || DEFAULT_VOICE);
+  const hp = new URLSearchParams(location.hash.slice(1));
+  if(hp.has("maman") || hp.has("papa") || hp.has("voix")){
+    VOICE = hp.has("voix") ? ((hp.get("voix") || "").trim().slice(0, 24) || DEFAULT_VOICE) : hp.has("papa") ? PAPA : DEFAULT_VOICE;
+    const coin = (hp.get("coin") || "").trim().slice(0, 40);
+    if(coin && !ls.get(recKey("from"), "")) ls.set(recKey("from"), coin);
     phrases = recPhrases(); startMom(); return;
   }
   phrases = allPhrases();

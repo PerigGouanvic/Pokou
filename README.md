@@ -21,7 +21,10 @@ Exercices : découverte, écouter et trouver le sens, lire et trouver le sens, c
 et « dis-le en breton » noté par le coach. Chaque profil (« Qui apprend ? ») a sa progression et ses étoiles.
 
 ## Voix de référence
-- Plusieurs voix par phrase : chaque proche reçoit un lien à son nom, `…/Pokou/#voix=Nom` (`#maman` reste valable).
+- Plusieurs voix par phrase : chaque proche reçoit un lien à son nom, `…/Pokou/#voix=Nom` (`#maman` et `#papa` sont des raccourcis).
+  On peut ajouter le parler de la personne au lien : `#papa&coin=Trégor`. Elle peut aussi l'écrire elle-même sur sa page (« D'où vient votre breton ? »).
+  Ce parler voyage dans chaque fichier WAV et s'affiche à côté du nom de la voix (« Voix : Papa (Trégor) »), pour ne pas mélanger les accents.
+  Les phrases ajoutées par chaque proche restent rangées sous sa voix.
   Il peut aussi ajouter ses propres mots et phrases ; le texte, la traduction et le nom de la voix voyagent dans le fichier WAV.
 - Depuis chez elle : la personne modèle ouvre https://periggouanvic.github.io/Pokou/#maman, enregistre les phrases et touche « Envoyer mes enregistrements » (partage Android : courriel, WhatsApp…). Les fichiers WAV portent l'identifiant de la phrase ; on les importe dans « Enregistrer la voix de référence > Importer les fichiers reçus ».
 - Dans l'appli : « Enregistrer la voix de référence » (stocké sur l'appareil).
